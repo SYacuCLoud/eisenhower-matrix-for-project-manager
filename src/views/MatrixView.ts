@@ -374,6 +374,9 @@ export class MatrixView extends ItemView {
       if (!reveal) this.pmCompatibilityLeaf = leaf
       await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: reveal })
     }
+    // Obsidian 1.7.2+는 비활성 탭을 DeferredView로 복원한다. 실제 PM ProjectView와
+    // 프로젝트 데이터가 준비된 뒤에만 DOM/호환 편집 경로를 사용할 수 있다.
+    if (!reveal && leaf.isDeferred) await leaf.loadIfDeferred()
     if (reveal) await this.app.workspace.revealLeaf(leaf)
     return leaf
   }

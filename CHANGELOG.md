@@ -1,5 +1,10 @@
 # 변경 기록
 
+## 1.4.5
+
+- Obsidian이 백그라운드 Project Manager 탭을 `DeferredView`로 복원한 경우 실제 뷰가 로드되지 않아 작업 편집기를 열지 못하던 문제 수정
+- 공식 `WorkspaceLeaf.loadIfDeferred()` 완료 후에만 PM 작업 검색과 편집 호환 경로 실행
+
 ## 1.4.4
 
 - 편집 모달을 연 직후 숨은 Project Manager leaf를 닫아 원본 노트 폴백이 발생하던 회귀 수정
