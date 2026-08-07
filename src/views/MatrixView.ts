@@ -474,6 +474,7 @@ export class MatrixView extends ItemView {
     const notice = new Notice('', 0)
     this.transitionNotice = notice
     this.transitionNoticeKey = key
+    notice.noticeEl.addClass('eis-transition-notice')
     notice.messageEl.empty()
     notice.messageEl.addClass('eis-transition-toast')
 
