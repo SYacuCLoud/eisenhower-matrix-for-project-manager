@@ -1,0 +1,185 @@
+import { Menu, Platform } from 'obsidian'
+import { KO } from '../i18n/ko'
+import { relativeDueKo } from '../model/dates'
+import { QUADRANT_ORDER, type MatrixTask, type QuadrantId } from '../model/types'
+import { priorityColor, priorityLabel } from '../pm/bridge'
+import type { PriorityConfig } from '../pm/pmTypes'
+import {
+  bindTouchLongPress,
+  isCardActivationKey
+} from './cardInteractions'
+
+export interface TaskCardProps {
+  task: MatrixTask
+  today: string
+  priorities: readonly PriorityConfig[]
+  projectTitle: string
+  parentTitle: string
+  currentQuadrant: QuadrantId
+  availableMoveTargets: readonly QuadrantId[]
+  /** 카드 기본 동작: Project Manager 프로젝트 화면 열기(불가능하면 노트로 폴백). */
+  onOpen: (task: MatrixTask) => void
+  /** 우클릭 메뉴에서 실제 Markdown 작업 노트를 연다. */
+  onOpenNote: (task: MatrixTask) => void
+  onMove: (task: MatrixTask, target: QuadrantId) => void
+}
+
+export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLElement {
+  const { task } = props
+  const card = parent.createDiv({ cls: 'eis-card' })
+  card.dataset['filePath'] = task.filePath
+  card.setAttr('role', 'button')
+  card.setAttr('tabindex', '0')
+  card.setAttr('aria-label', KO.card.openTask(task.title))
+  card.setAttr('aria-haspopup', 'menu')
+  if (task.archived) card.addClass('eis-card--archived')
+
+  // 보관된 작업을 옮기면 PM 의 아카이브 의미와 싸우게 된다.
+  const draggable = !task.archived && !Platform.isMobile
+  card.draggable = draggable
+
+  const color = priorityColor(task.priority, props.priorities)
+  const bar = card.createDiv({ cls: 'eis-card-bar' })
+  if (color) bar.style.backgroundColor = color
+
+  const body = card.createDiv({ cls: 'eis-card-body' })
+
+  if (props.parentTitle) {
+    body.createDiv({ cls: 'eis-card-parent', text: `↳ ${props.parentTitle}` })
+  }
+
+  const titleRow = body.createDiv({ cls: 'eis-card-title-row' })
+  titleRow.createSpan({ cls: 'eis-card-title', text: task.title })
+  if (task.type === 'milestone') {
+    titleRow.createSpan({ cls: 'eis-badge eis-badge--milestone', text: 'M' })
+  }
+  if (task.archived) {
+    titleRow.createSpan({ cls: 'eis-badge eis-badge--archived', text: KO.card.archived })
+  }
+  if (task.rolledUpSubtaskCount) {
+    titleRow.createSpan({
+      cls: 'eis-badge eis-badge--subtasks',
+      text: KO.card.subtasks(task.rolledUpSubtaskCount)
+    })
+  }
+  if (task.rolledUpUrgentCount) {
+    titleRow.createSpan({
+      cls: 'eis-badge eis-badge--rollup-urgent',
+      text: KO.card.rollupUrgent(task.rolledUpUrgentCount)
+    })
+  }
+  if (task.rolledUpImportantCount) {
+    titleRow.createSpan({
+      cls: 'eis-badge eis-badge--rollup-important',
+      text: KO.card.rollupImportant(task.rolledUpImportantCount)
+    })
+  }
+  if (task.rolledUpCompletedCount) {
+    titleRow.createSpan({
+      cls: 'eis-badge eis-badge--rollup-completed',
+      text: KO.card.rollupCompleted(task.rolledUpCompletedCount)
+    })
+  }
+
+  const meta = body.createDiv({ cls: 'eis-card-meta' })
+
+  if (task.due) {
+    const rel = relativeDueKo(task.due, props.today)
+    const chip = meta.createSpan({ cls: 'eis-chip eis-chip--due', text: `${task.due} · ${rel.text}` })
+    chip.addClass(`eis-chip--${rel.tone}`)
+  }
+
+  const pLabel = priorityLabel(task.priority, props.priorities)
+  if (pLabel) {
+    const chip = meta.createSpan({ cls: 'eis-chip eis-chip--priority', text: pLabel })
+    if (color) chip.style.borderColor = color
+  }
+
+  if (props.projectTitle) {
+    meta.createSpan({ cls: 'eis-chip eis-chip--project', text: props.projectTitle })
+  }
+
+  for (const tag of task.tags.slice(0, 3)) {
+    meta.createSpan({ cls: 'eis-chip eis-chip--tag', text: `#${tag}` })
+  }
+
+  let suppressClickUntil = 0
+  card.addEventListener('click', (e) => {
+    if (e.defaultPrevented) return
+    if (Date.now() <= suppressClickUntil) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    props.onOpen(task)
+  })
+
+  const buildMenu = (): Menu => {
+    const menu = new Menu()
+    let hasMoveItem = false
+    if (!task.archived) {
+      for (const q of QUADRANT_ORDER) {
+        if (q === props.currentQuadrant) continue
+        if (!props.availableMoveTargets.includes(q)) continue
+        hasMoveItem = true
+        menu.addItem((item) =>
+          item
+            .setTitle(`${KO.menu.moveTo}: ${KO.quadrant[q].subtitle}`)
+            .setIcon('move')
+            .onClick(() => props.onMove(task, q))
+        )
+      }
+    }
+    if (hasMoveItem) menu.addSeparator()
+    menu.addItem((item) =>
+      item
+        .setTitle(KO.menu.openProject)
+        .setIcon('chart-gantt')
+        .onClick(() => props.onOpen(task))
+    )
+    menu.addItem((item) =>
+      item
+        .setTitle(KO.menu.openNote)
+        .setIcon('file-text')
+        .onClick(() => props.onOpenNote(task))
+    )
+    return menu
+  }
+
+  card.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+    if (Date.now() <= suppressClickUntil) return
+    buildMenu().showAtMouseEvent(e)
+  })
+
+  card.addEventListener('keydown', (e) => {
+    if (isCardActivationKey(e.key)) {
+      e.preventDefault()
+      props.onOpen(task)
+      return
+    }
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+      e.preventDefault()
+      const rect = card.getBoundingClientRect()
+      buildMenu().showAtPosition({ x: rect.left + 12, y: rect.top + 12 })
+    }
+  })
+
+  bindTouchLongPress(card, ({ x, y }) => {
+    if (!card.isConnected) return
+    suppressClickUntil = Date.now() + 800
+    buildMenu().showAtPosition({ x, y })
+  })
+
+  if (draggable) {
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer?.setData('text/plain', task.filePath)
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+      // 같은 틱에 클래스를 붙이면 드래그 이미지가 깨진다.
+      window.setTimeout(() => card.addClass('eis-card--dragging'), 0)
+    })
+    card.addEventListener('dragend', () => card.removeClass('eis-card--dragging'))
+  }
+
+  return card
+}

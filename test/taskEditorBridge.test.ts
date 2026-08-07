@@ -1,0 +1,87 @@
+import { describe, expect, it, vi } from 'vitest'
+import {
+  tryOpenTaskEditorApi,
+  tryOpenTaskEditorFromProjectView,
+  type PmTaskEditorRequest
+} from '../src/pm/taskEditorBridge'
+
+const request: PmTaskEditorRequest = {
+  projectPath: 'Projects/demo.md',
+  taskId: 'task-1',
+  taskPath: 'Projects/demo_tasks/task.md'
+}
+
+describe('Project Manager 공개 API 연동', () => {
+  it('capability가 있는 openTaskEditor API를 우선 호출한다', async () => {
+    const openTaskEditor = vi.fn()
+    const plugin = {
+      api: {
+        hasCapability: (capability: string) => capability === 'task-editor.open',
+        openTaskEditor
+      }
+    }
+    expect(await tryOpenTaskEditorApi(plugin, request)).toBe(true)
+    expect(openTaskEditor).toHaveBeenCalledWith(request)
+  })
+
+  it('capability가 없으면 알 수 없는 API를 호출하지 않는다', async () => {
+    const openTaskEditor = vi.fn()
+    const plugin = { api: { hasCapability: () => false, openTaskEditor } }
+    expect(await tryOpenTaskEditorApi(plugin, request)).toBe(false)
+    expect(openTaskEditor).not.toHaveBeenCalled()
+  })
+
+  it('capability 계약이 없는 동명 메서드는 호출하지 않는다', async () => {
+    const openTaskEditor = vi.fn()
+    expect(await tryOpenTaskEditorApi({ api: { openTaskEditor } }, request)).toBe(false)
+    expect(openTaskEditor).not.toHaveBeenCalled()
+  })
+})
+
+describe('Project Manager 1.8 TableView 호환 경로', () => {
+  it('필터와 뷰를 잠시 전환해 선택 작업에 Enter를 보내고 원상 복구한다', () => {
+    const originalFilter = {
+      text: 'needle',
+      statuses: ['todo'],
+      priorities: ['high'],
+      assignees: ['alice'],
+      tags: ['tag'],
+      dueDateFilter: 'overdue',
+      showArchived: false
+    }
+    const pressed: Array<{ id: string | null | undefined; key: string }> = []
+    const view: Record<string, any> = {
+      currentView: 'kanban',
+      filter: { ...originalFilter },
+      project: { tasks: [{ id: 'task-1', subtasks: [] }] },
+      subview: null,
+      renderCurrentView() {
+        if (this.currentView === 'table') {
+          const state = { selectedTaskId: null as string | null }
+          this.subview = {
+            state,
+            handleKeyDown: (event: KeyboardEvent) =>
+              pressed.push({ id: state.selectedTaskId, key: event.key })
+          }
+        }
+      }
+    }
+
+    const opened = tryOpenTaskEditorFromProjectView(
+      view,
+      'task-1',
+      () => ({ key: 'Enter' }) as KeyboardEvent
+    )
+    expect(opened).toBe(true)
+    expect(pressed).toEqual([{ id: 'task-1', key: 'Enter' }])
+    expect(view.currentView).toBe('kanban')
+    expect(view.filter).toEqual(originalFilter)
+  })
+
+  it('프로젝트에 없는 작업이면 내부 뷰를 건드리지 않는다', () => {
+    const renderCurrentView = vi.fn()
+    const view = { project: { tasks: [] }, renderCurrentView }
+    expect(tryOpenTaskEditorFromProjectView(view, 'missing')).toBe(false)
+    expect(renderCurrentView).not.toHaveBeenCalled()
+  })
+})

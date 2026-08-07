@@ -1,0 +1,10 @@
+node_modules/
+/main.js
+/styles.css
+data.json
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,92 @@
+# Eisenhower Matrix for Project Manager
+
+Obsidian의 [Project Manager](https://github.com/StepanKropachev/obsidian-pm)용 추가 플러그인입니다. Project Manager 작업을 긴급도와 중요도에 따라 2×2 매트릭스로 정리하고, 카드를 다른 분면으로 옮겨 작업 노트의 마감일과 우선순위를 안전하게 갱신합니다.
+
+> 이 플러그인은 단독 작업 관리 플러그인이 아닙니다. Project Manager가 생성한 `pm-task` 작업 노트를 기반으로 동작합니다.
+
+## 주요 기능
+
+- `즉시 실행`, `일정 계획`, `위임`, `제외 검토`의 4분면
+- Project Manager 상태·우선순위 설정 자동 연동
+- 제목·태그 검색, 프로젝트 필터, 완료·보관 작업 표시 전환
+- 드래그 앤 드롭과 우클릭 메뉴를 통한 분면 이동
+- 변경 필드 미리보기와 동시 수정 충돌 검사
+- 마지막 이동 되돌리기
+- 데스크톱과 모바일에 대응하는 반응형 레이아웃
+- 카드 클릭 시 Project Manager 작업 편집기 열기
+- rollup 모드에서 하위 작업 검색과 긴급·중요·완료 개수 요약
+
+## 요구 사항
+
+- Obsidian `1.13.0` 이상
+- Project Manager 플러그인과 해당 플러그인이 생성한 `pm-task` 작업 노트
+
+Project Manager가 설치되지 않은 경우 기본 상태·우선순위 설정으로 화면을 열 수 있지만, 작업 편집기 연결과 완전한 데이터 호환은 보장되지 않습니다.
+
+## 설치
+
+### 수동 설치
+
+릴리스에서 `main.js`, `styles.css`, `manifest.json`을 내려받아 Vault의 다음 폴더에 넣습니다.
+
+```text
+.obsidian/plugins/eisenhower-matrix-for-project-manager/
+```
+
+Obsidian을 다시 불러온 뒤 **설정 → 커뮤니티 플러그인**에서 **Eisenhower Matrix for Project Manager**를 활성화합니다.
+
+### 소스에서 빌드
+
+Node.js 20 이상과 npm이 필요합니다.
+
+```bash
+npm ci
+npm test
+npm run check:types
+npm run build
+```
+
+빌드 결과는 프로젝트 루트의 `main.js`와 `styles.css`입니다. 개발 Vault로 직접 출력하려면 `VAULT_PATH` 환경 변수를 지정한 뒤 `npm run dev` 또는 `npm run build`를 실행할 수 있습니다.
+
+## 사용 방법
+
+명령 팔레트에서 **아이젠하워 매트릭스 열기**를 실행합니다. 작업 카드를 끌거나 우클릭해 분면을 변경할 수 있습니다. 카드 본문을 클릭하면 Project Manager의 해당 프로젝트 화면으로 이동한 뒤 작업 편집기를 엽니다.
+
+분면은 다음 규칙으로 계산됩니다.
+
+- **긴급**: 완료되지 않았고, 마감일까지 남은 일수가 설정한 기준 이내인 작업
+- **중요**: Project Manager 우선순위 배열에서 설정한 임계값 이상인 작업
+- 완료 작업과 `Archive` 경로의 작업은 기본적으로 숨김
+
+기준 일수, 중요도 임계값, 이동 시 마감일 처리 방식은 플러그인 설정에서 바꿀 수 있습니다.
+
+rollup 모드에서는 최상위 부모의 마감일과 우선순위가 카드의 분면과 이동 대상을 결정합니다. 하위 작업의 제목·태그·담당자는 부모 카드 검색에 포함하며, 하위 작업의 긴급·중요·완료 상태는 카드 배지에 개수로 표시합니다.
+
+## 데이터 안전
+
+작업 노트는 YAML 프론트매터에 `pm-task: true`가 있어야 합니다. 분면 이동 시 다음 필드만 변경할 수 있습니다.
+
+- `due`
+- `priority`
+- 새 마감일보다 늦은 경우의 `start`(설정에서 끌 수 있음)
+- 변경 시각을 기록하는 `updatedAt`
+
+본문, 상태, 진행률, 완료일, 태그, 담당자, 하위 작업과 의존성은 변경하지 않습니다. 별도의 `eis-*` 프론트매터도 추가하지 않습니다. 플러그인 설정과 필터 상태는 Obsidian 플러그인 `data.json`에 저장되며 Git에서 제외됩니다.
+
+## 알려진 제한 사항
+
+- Project Manager 1.8.0은 작업 편집 공개 API를 제공하지 않습니다. 이 버전에서는 검증된 호환 계층을 사용하며, 향후 `task-editor.open` capability를 명시한 API가 제공될 경우에만 공식 경로를 우선 사용합니다.
+- 호환 계층이 Project Manager 업데이트로 동작하지 않으면 작업 Markdown 노트를 안전한 폴백으로 엽니다.
+- 실제 Vault에서의 화면 렌더링과 모바일 길게 누르기는 자동 테스트 범위에 포함되지 않습니다.
+
+## 개발 및 기여
+
+단위 테스트는 날짜, 분류, 32개 이동 조합, 충돌 검사, 프론트매터 병합, 인덱싱, 필터와 정렬을 검증합니다. 기여 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고해 주세요.
+
+### 릴리스 만들기
+
+`manifest.json`과 `versions.json`의 버전을 갱신한 뒤, 버전과 정확히 같은 태그를 푸시합니다. 예를 들어 버전 `1.0.1`의 태그는 `1.0.1`입니다. GitHub Actions가 검증과 빌드를 수행하고 설치 파일을 GitHub Release에 첨부합니다.
+
+## 라이선스
+
+[MIT](LICENSE)

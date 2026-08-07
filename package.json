@@ -1,0 +1,41 @@
+{
+  "name": "eisenhower-matrix-for-project-manager",
+  "version": "1.1.1",
+  "description": "An Eisenhower Matrix add-on for the Obsidian Project Manager plugin",
+  "author": "SYacuCLoud",
+  "license": "MIT",
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "eisenhower-matrix",
+    "task-management"
+  ],
+  "main": "main.js",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "run-p dev:js dev:css",
+    "dev:js": "tsdown --watch",
+    "dev:css": "node scripts/build-styles.mjs --watch",
+    "build": "run-p build:js build:css",
+    "build:js": "cross-env PRODUCTION=1 tsdown",
+    "build:css": "cross-env PRODUCTION=1 node scripts/build-styles.mjs",
+    "check:types": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "cross-env": "^7.0.3",
+    "npm-run-all2": "^7.0.2",
+    "obsidian": "^1.8.7",
+    "tsdown": "^0.22.14",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  }
+}
