@@ -189,8 +189,8 @@ export const KO = {
     maxCards: '사분면당 최대 카드 수',
     maxCardsDesc: '카드가 너무 많을 때 렌더링 속도를 지킵니다.',
     sortMode: '기본 정렬',
-    showTransitionBriefing: '분면 이동 브리핑',
-    showTransitionBriefingDesc: '이전 확인 이후 분면·긴급도·실행 상태가 달라진 작업을 보여줍니다.',
+    showTransitionBriefing: '작업 변화 토스트 알림',
+    showTransitionBriefingDesc: '이전 확인 이후 분면·긴급도·실행 상태가 달라진 작업을 토스트로 알립니다.',
 
     sectionDrag: '드래그 동작',
     confirmOnDrop: '이동 전 확인 창 표시',

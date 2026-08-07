@@ -32,6 +32,8 @@ export class MatrixView extends ItemView {
   private renderToken = 0
   /** PM 공개 API가 없을 때 편집 모달을 여는 용도로만 재사용하는 단일 비활성 leaf. */
   private pmCompatibilityLeaf: WorkspaceLeaf | null = null
+  private transitionNotice: Notice | null = null
+  private transitionNoticeKey = ''
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -60,6 +62,7 @@ export class MatrixView extends ItemView {
   }
 
   override async onClose(): Promise<void> {
+    this.hideTransitionToast()
     this.contentEl.empty()
   }
 
@@ -141,7 +144,9 @@ export class MatrixView extends ItemView {
     }
 
     if (settings.showTransitionBriefing && settings.pendingTransitions.length > 0) {
-      this.renderTransitionBriefing(root)
+      this.showTransitionToast()
+    } else {
+      this.hideTransitionToast()
     }
 
     const all = prepareTasksForSubtaskMode(this.plugin.index.all(), settings.subtaskMode, ctx)
@@ -456,50 +461,69 @@ export class MatrixView extends ItemView {
     )
   }
 
-  private renderTransitionBriefing(root: HTMLElement): void {
+  private showTransitionToast(): void {
     const items = this.plugin.settings.pendingTransitions
-    const panel = root.createDiv({ cls: 'eis-briefing' })
-    const header = panel.createDiv({ cls: 'eis-briefing-header' })
-    const titles = header.createDiv()
-    titles.createDiv({ cls: 'eis-briefing-title', text: KO.briefing.title(items.length) })
-    titles.createDiv({ cls: 'eis-briefing-subtitle', text: KO.briefing.subtitle })
-    const dismiss = header.createEl('button', { cls: 'eis-btn', text: KO.briefing.dismiss })
+    if (items.length === 0) {
+      this.hideTransitionToast()
+      return
+    }
+    const key = items.map((item) => `${item.filePath}:${item.detectedAt}`).join('|')
+    if (this.transitionNotice && this.transitionNoticeKey === key) return
+    this.hideTransitionToast()
+
+    const notice = new Notice('', 0)
+    this.transitionNotice = notice
+    this.transitionNoticeKey = key
+    notice.messageEl.empty()
+    notice.messageEl.addClass('eis-transition-toast')
+
+    const header = notice.messageEl.createDiv({ cls: 'eis-transition-toast-header' })
+    header.createDiv({ cls: 'eis-transition-toast-title', text: KO.briefing.title(items.length) })
+    const dismiss = header.createEl('button', {
+      cls: 'eis-transition-toast-dismiss',
+      text: KO.briefing.dismiss
+    })
     dismiss.addEventListener(
       'click',
       safeAsync(async () => {
+        if (this.transitionNotice === notice) {
+          this.transitionNotice = null
+          this.transitionNoticeKey = ''
+        }
+        notice.hide()
         await this.plugin.dismissTransitions()
       })
     )
 
-    const list = panel.createDiv({ cls: 'eis-briefing-list' })
-    for (const item of items.slice(0, 10)) {
-      const row = list.createDiv({ cls: 'eis-briefing-item' })
-      row.setAttr('role', 'button')
-      row.setAttr('tabindex', '0')
-      row.createDiv({ cls: 'eis-briefing-task', text: item.title })
-      const reasons = row.createDiv({ cls: 'eis-briefing-reasons' })
-      for (const reason of item.reasons) {
-        reasons.createSpan({
-          cls: 'eis-briefing-reason',
-          text: this.transitionReasonText(reason.kind, reason.before, reason.after)
-        })
-      }
+    const list = notice.messageEl.createDiv({ cls: 'eis-transition-toast-list' })
+    for (const item of items.slice(0, 3)) {
+      const row = list.createEl('button', { cls: 'eis-transition-toast-item' })
+      row.createSpan({ cls: 'eis-transition-toast-task', text: item.title })
+      row.createSpan({
+        cls: 'eis-transition-toast-reason',
+        text: item.reasons
+          .map((reason) => this.transitionReasonText(reason.kind, reason.before, reason.after))
+          .join(' · ')
+      })
       const open = () => {
         const task = this.plugin.index.get(item.filePath)
         if (task) void this.openTaskEditorInProjectManager(task)
         else void this.app.workspace.openLinkText(item.filePath, '', false)
       }
       row.addEventListener('click', open)
-      row.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          open()
-        }
+    }
+    if (items.length > 3) {
+      notice.messageEl.createDiv({
+        cls: 'eis-transition-toast-more',
+        text: KO.briefing.more(items.length - 3)
       })
     }
-    if (items.length > 10) {
-      list.createDiv({ cls: 'eis-briefing-more', text: KO.briefing.more(items.length - 10) })
-    }
+  }
+
+  private hideTransitionToast(): void {
+    this.transitionNotice?.hide()
+    this.transitionNotice = null
+    this.transitionNoticeKey = ''
   }
 
   private transitionReasonText(kind: string, before: string, after: string): string {
