@@ -101,7 +101,7 @@ export const KO = {
 
   menu: {
     moveTo: '사분면 이동',
-    openProject: 'Project Manager에서 열기',
+    openProject: 'Project Manager 작업 편집기 열기',
     openNote: '실제 노트 열기',
     undo: '되돌리기'
   },

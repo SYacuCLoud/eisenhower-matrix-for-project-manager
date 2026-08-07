@@ -355,7 +355,7 @@ export class MatrixView extends ItemView {
     new Notice(KO.notice.createTaskFallback)
   }
 
-  private async openProjectLeaf(projectPath: string): Promise<WorkspaceLeaf> {
+  private async openProjectLeaf(projectPath: string, reveal = true): Promise<WorkspaceLeaf> {
     const viewType = 'pm-project'
     const existing = this.app.workspace.getLeavesOfType(viewType).find((leaf) => {
       const state = leaf.getViewState().state as { filePath?: unknown } | undefined
@@ -363,9 +363,9 @@ export class MatrixView extends ItemView {
     })
     const leaf = existing ?? this.app.workspace.getLeaf('tab')
     if (!existing) {
-      await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: true })
+      await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: reveal })
     }
-    await this.app.workspace.revealLeaf(leaf)
+    if (reveal) await this.app.workspace.revealLeaf(leaf)
     return leaf
   }
 
@@ -388,7 +388,8 @@ export class MatrixView extends ItemView {
       return
     }
 
-    const leaf = await this.openProjectLeaf(projectPath)
+    // PM 뷰는 편집기를 여는 호환 표면으로만 준비하고 활성 탭은 매트릭스에 둔다.
+    const leaf = await this.openProjectLeaf(projectPath, false)
 
     // setViewState가 프로젝트 로드를 기다리지만, Obsidian/서드파티 leaf 복원기는
     // DOM 연결을 다음 프레임으로 미룰 수 있어 짧게 재시도한다.

@@ -61,9 +61,6 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
 
   const titleRow = body.createDiv({ cls: 'eis-card-title-row' })
   titleRow.createSpan({ cls: 'eis-card-title', text: task.title })
-  if (task.type === 'milestone') {
-    titleRow.createSpan({ cls: 'eis-badge eis-badge--milestone', text: 'M' })
-  }
   if (!compact && task.archived) {
     titleRow.createSpan({ cls: 'eis-badge eis-badge--archived', text: KO.card.archived })
   }
@@ -91,27 +88,38 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
       text: KO.card.rollupCompleted(task.rolledUpCompletedCount)
     })
   }
-  if (!compact && props.unavailableReason === 'blocked-status') {
-    titleRow.createSpan({ cls: 'eis-badge eis-badge--blocked', text: KO.card.blockedStatus })
-  } else if (!compact && props.unavailableReason === 'future-start') {
-    titleRow.createSpan({
+  const hasAttention =
+    !compact &&
+    (task.type === 'milestone' ||
+      props.unavailableReason !== null ||
+      props.urgencyLevel !== 'none' ||
+      props.neglectedAgeDays > 0)
+  const attention = hasAttention ? body.createDiv({ cls: 'eis-card-attention' }) : null
+
+  if (attention && task.type === 'milestone') {
+    attention.createSpan({ cls: 'eis-badge eis-badge--milestone', text: 'M' })
+  }
+  if (attention && props.unavailableReason === 'blocked-status') {
+    attention.createSpan({ cls: 'eis-badge eis-badge--blocked', text: KO.card.blockedStatus })
+  } else if (attention && props.unavailableReason === 'future-start') {
+    attention.createSpan({
       cls: 'eis-badge eis-badge--future',
       text: KO.card.futureStart(task.start)
     })
   }
-  if (!compact && props.urgencyLevel !== 'none') {
+  if (attention && props.urgencyLevel !== 'none') {
     const urgencyText = {
       overdue: KO.card.urgencyOverdue,
       today: KO.card.urgencyToday,
       soon: KO.card.urgencySoon
     }[props.urgencyLevel]
-    titleRow.createSpan({
+    attention.createSpan({
       cls: `eis-badge eis-badge--urgency eis-badge--urgency-${props.urgencyLevel}`,
       text: urgencyText
     })
   }
-  if (!compact && props.neglectedAgeDays > 0) {
-    titleRow.createSpan({
+  if (attention && props.neglectedAgeDays > 0) {
+    attention.createSpan({
       cls: 'eis-badge eis-badge--neglected',
       text: KO.card.neglected(props.neglectedAgeDays),
       attr: {
@@ -136,7 +144,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     if (color) chip.style.borderColor = color
   }
 
-  if (meta && props.projectTitle) {
+  if (meta && detailed && props.projectTitle) {
     meta.createSpan({ cls: 'eis-chip eis-chip--project', text: props.projectTitle })
   }
 
@@ -153,11 +161,14 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     if (task.start) {
       details.createSpan({ cls: 'eis-chip eis-chip--start', text: KO.card.start(task.start) })
     }
-    for (const assignee of task.assignees.slice(0, 4)) {
-      details.createSpan({ cls: 'eis-chip eis-chip--assignee', text: `@${assignee}` })
-    }
     if (task.progress > 0) {
       details.createSpan({ cls: 'eis-chip eis-chip--progress', text: KO.card.progress(task.progress) })
+    }
+    if (task.assignees.length > 0) {
+      const assignees = body.createDiv({ cls: 'eis-card-assignees' })
+      for (const assignee of task.assignees) {
+        assignees.createSpan({ cls: 'eis-chip eis-chip--assignee', text: `@${assignee}` })
+      }
     }
   }
 
