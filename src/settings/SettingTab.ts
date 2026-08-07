@@ -138,6 +138,17 @@ export class EisenSettingTab extends PluginSettingTab {
     )
 
     new Setting(containerEl)
+      .setName(KO.settings.showTransitionBriefing)
+      .setDesc(KO.settings.showTransitionBriefingDesc)
+      .addToggle((t) =>
+        t.setValue(s.showTransitionBriefing).onChange(async (v) => {
+          s.showTransitionBriefing = v
+          if (!v) s.pendingTransitions = []
+          await save()
+        })
+      )
+
+    new Setting(containerEl)
       .setName(KO.settings.sortMode)
       .addDropdown((dd) =>
         dd

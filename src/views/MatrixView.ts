@@ -51,6 +51,7 @@ export class MatrixView extends ItemView {
 
   override async onOpen(): Promise<void> {
     this.contentEl.addClass('eis-view')
+    await this.plugin.scanTransitions(true)
     this.render()
   }
 
@@ -127,6 +128,10 @@ export class MatrixView extends ItemView {
 
     if (!palettes.available && !settings.pmBannerDismissed) {
       this.renderBanner(root)
+    }
+
+    if (settings.showTransitionBriefing && settings.pendingTransitions.length > 0) {
+      this.renderTransitionBriefing(root)
     }
 
     const all = prepareTasksForSubtaskMode(this.plugin.index.all(), settings.subtaskMode, ctx)
@@ -347,6 +352,61 @@ export class MatrixView extends ItemView {
         banner.remove()
       })
     )
+  }
+
+  private renderTransitionBriefing(root: HTMLElement): void {
+    const items = this.plugin.settings.pendingTransitions
+    const panel = root.createDiv({ cls: 'eis-briefing' })
+    const header = panel.createDiv({ cls: 'eis-briefing-header' })
+    const titles = header.createDiv()
+    titles.createDiv({ cls: 'eis-briefing-title', text: KO.briefing.title(items.length) })
+    titles.createDiv({ cls: 'eis-briefing-subtitle', text: KO.briefing.subtitle })
+    const dismiss = header.createEl('button', { cls: 'eis-btn', text: KO.briefing.dismiss })
+    dismiss.addEventListener(
+      'click',
+      safeAsync(async () => {
+        await this.plugin.dismissTransitions()
+      })
+    )
+
+    const list = panel.createDiv({ cls: 'eis-briefing-list' })
+    for (const item of items.slice(0, 10)) {
+      const row = list.createDiv({ cls: 'eis-briefing-item' })
+      row.setAttr('role', 'button')
+      row.setAttr('tabindex', '0')
+      row.createDiv({ cls: 'eis-briefing-task', text: item.title })
+      const reasons = row.createDiv({ cls: 'eis-briefing-reasons' })
+      for (const reason of item.reasons) {
+        reasons.createSpan({
+          cls: 'eis-briefing-reason',
+          text: this.transitionReasonText(reason.kind, reason.before, reason.after)
+        })
+      }
+      const open = () => {
+        const task = this.plugin.index.get(item.filePath)
+        if (task) void this.openTaskEditorInProjectManager(task)
+        else void this.app.workspace.openLinkText(item.filePath, '', false)
+      }
+      row.addEventListener('click', open)
+      row.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          open()
+        }
+      })
+    }
+    if (items.length > 10) {
+      list.createDiv({ cls: 'eis-briefing-more', text: KO.briefing.more(items.length - 10) })
+    }
+  }
+
+  private transitionReasonText(kind: string, before: string, after: string): string {
+    const value = (raw: string): string => {
+      if (raw in KO.quadrant) return KO.quadrant[raw as QuadrantId].subtitle
+      return KO.briefing.value[raw as keyof typeof KO.briefing.value] ?? raw
+    }
+    if (kind === 'neglected') return KO.briefing.neglected
+    return KO.briefing.change(KO.briefing.kind[kind as keyof typeof KO.briefing.kind] ?? kind, value(before), value(after))
   }
 
   private renderEmptyAll(root: HTMLElement, message: string, settingsButton: boolean): void {

@@ -66,6 +66,30 @@ export const KO = {
     empty: '실행을 막는 작업이 없습니다.'
   },
 
+  briefing: {
+    title: (n: number) => `달라진 작업 ${n}개`,
+    subtitle: '이전 확인 이후 우선순위와 실행 상태가 바뀌었습니다.',
+    dismiss: '모두 확인',
+    more: (n: number) => `외 ${n}개 변화`,
+    change: (kind: string, before: string, after: string) => `${kind}: ${before} → ${after}`,
+    neglected: '방치 위험으로 전환',
+    kind: {
+      quadrant: '분면',
+      availability: '실행 상태',
+      urgency: '긴급도',
+      priority: '우선순위'
+    },
+    value: {
+      available: '실행 가능',
+      'blocked-status': '차단됨',
+      'future-start': '시작일 전',
+      none: '여유',
+      soon: '마감 임박',
+      today: '오늘 마감',
+      overdue: '기한 초과'
+    }
+  },
+
   menu: {
     moveTo: '사분면 이동',
     openProject: 'Project Manager에서 열기',
@@ -150,6 +174,8 @@ export const KO = {
     maxCards: '사분면당 최대 카드 수',
     maxCardsDesc: '카드가 너무 많을 때 렌더링 속도를 지킵니다.',
     sortMode: '기본 정렬',
+    showTransitionBriefing: '분면 이동 브리핑',
+    showTransitionBriefingDesc: '이전 확인 이후 분면·긴급도·실행 상태가 달라진 작업을 보여줍니다.',
 
     sectionDrag: '드래그 동작',
     confirmOnDrop: '이동 전 확인 창 표시',

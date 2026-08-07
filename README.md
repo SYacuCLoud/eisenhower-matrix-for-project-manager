@@ -18,6 +18,7 @@ Obsidian의 [Project Manager](https://github.com/StepanKropachev/obsidian-pm)용
 - `Blocked` 상태와 미래 시작일 작업을 실행 불가 영역으로 분리
 - 긴급 작업의 `기한 초과`·`오늘 마감`·`마감 임박` 단계 표시
 - 오랫동안 수정되지 않은 중요 작업의 방치 위험 탐지
+- 이전 확인 이후 분면·긴급도·실행 상태가 달라진 작업 브리핑
 
 ## 요구 사항
 

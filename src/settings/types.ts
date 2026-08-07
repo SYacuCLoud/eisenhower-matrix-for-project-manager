@@ -1,5 +1,6 @@
 import { makeDefaultFilter } from '../model/filter'
 import type { MatrixFilter, QuadrantId, SortMode, SubtaskMode } from '../model/types'
+import type { TaskStateSnapshot, TaskTransition } from '../model/transitions'
 
 export type UrgentDueStrategy = 'today' | 'tomorrow' | 'windowEdge'
 export type NotUrgentStrategy = 'push' | 'clear'
@@ -29,6 +30,9 @@ export interface EisenSettings {
 
   // 기타
   pmBannerDismissed: boolean
+  showTransitionBriefing: boolean
+  transitionSnapshot: Record<string, TaskStateSnapshot>
+  pendingTransitions: TaskTransition[]
 }
 
 export const DEFAULT_SETTINGS: EisenSettings = {
@@ -51,7 +55,10 @@ export const DEFAULT_SETTINGS: EisenSettings = {
   notUrgentPaddingDays: 4,
   keepStartBeforeDue: true,
 
-  pmBannerDismissed: false
+  pmBannerDismissed: false,
+  showTransitionBriefing: true,
+  transitionSnapshot: {},
+  pendingTransitions: []
 }
 
 /** 저장된 data.json 을 신뢰하지 않고 기본값 위에 정상 값만 얹는다. */
@@ -61,7 +68,11 @@ export function hydrateSettings(saved: unknown): EisenSettings {
     ...DEFAULT_SETTINGS,
     ...s,
     filter: { ...makeDefaultFilter(), ...(s.filter ?? {}) },
-    collapsedQuadrants: Array.isArray(s.collapsedQuadrants) ? [...s.collapsedQuadrants] : []
+    collapsedQuadrants: Array.isArray(s.collapsedQuadrants) ? [...s.collapsedQuadrants] : [],
+    transitionSnapshot: isRecord(s.transitionSnapshot) ? { ...s.transitionSnapshot } : {},
+    pendingTransitions: Array.isArray(s.pendingTransitions)
+      ? s.pendingTransitions.filter(isTaskTransition).slice(0, 100)
+      : []
   }
 
   out.urgencyWindowDays = clampInt(out.urgencyWindowDays, 1, 14, DEFAULT_SETTINGS.urgencyWindowDays)
@@ -82,6 +93,21 @@ export function hydrateSettings(saved: unknown): EisenSettings {
   }
 
   return out
+}
+
+function isRecord(v: unknown): v is Record<string, TaskStateSnapshot> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
+}
+
+function isTaskTransition(v: unknown): v is TaskTransition {
+  if (v === null || typeof v !== 'object') return false
+  const item = v as Partial<TaskTransition>
+  return (
+    typeof item.filePath === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.detectedAt === 'number' &&
+    Array.isArray(item.reasons)
+  )
 }
 
 function clampInt(v: unknown, min: number, max: number, fallback: number): number {

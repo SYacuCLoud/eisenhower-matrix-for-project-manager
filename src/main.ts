@@ -6,6 +6,7 @@ import { registerIndexSync } from './index/vaultSync'
 import { KO } from './i18n/ko'
 import { canMoveToQuadrant, classify, importantIdsForThreshold } from './model/classify'
 import { todayString } from './model/dates'
+import { mergePendingTransitions, scanTaskTransitions } from './model/transitions'
 import { QUADRANT_ORDER, type ClassifyContext, type MatrixTask, type QuadrantId, type QuadrantWritePlan } from './model/types'
 import { MoveConfirmModal } from './modals/MoveConfirmModal'
 import { readPmPalettes } from './pm/bridge'
@@ -29,13 +30,13 @@ export default class EisenhowerPlugin extends Plugin {
     await this.loadSettings()
 
     this.index = new MatrixIndex(this.app)
-    registerIndexSync(this, this.index, () => this.refreshMatrixViews())
+    registerIndexSync(this, this.index, () => void this.handleIndexChanged())
 
     this.registerView(EISEN_MATRIX_VIEW_TYPE, (leaf: WorkspaceLeaf) => new MatrixView(leaf, this))
 
     this.app.workspace.onLayoutReady(() => {
       this.index.rebuild()
-      this.refreshMatrixViews()
+      void this.handleIndexChanged()
     })
 
     this.addRibbonIcon('layout-grid', KO.pluginName, () => {
@@ -55,8 +56,7 @@ export default class EisenhowerPlugin extends Plugin {
       name: KO.command.refresh,
       callback: () => {
         this.index.rebuild()
-        this.refreshMatrixViews()
-        new Notice(KO.notice.refreshed)
+        void this.handleIndexChanged().then(() => new Notice(KO.notice.refreshed))
       }
     })
 
@@ -110,6 +110,42 @@ export default class EisenhowerPlugin extends Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType(EISEN_MATRIX_VIEW_TYPE)) {
       if (leaf.view instanceof MatrixView) leaf.view.render()
     }
+  }
+
+  /** 현재 분류를 이전 기준선과 비교한다. record=false 는 사용자가 직접 이동한 직후에 쓴다. */
+  async scanTransitions(record = true): Promise<void> {
+    const { ctx } = this.buildContext()
+    const result = scanTaskTransitions(
+      this.index.all(),
+      this.settings.transitionSnapshot,
+      ctx,
+      this.settings.neglectedAfterDays,
+      Date.now()
+    )
+    const snapshotChanged =
+      JSON.stringify(this.settings.transitionSnapshot) !== JSON.stringify(result.snapshot)
+    this.settings.transitionSnapshot = result.snapshot
+    let pendingChanged = false
+    if (record && this.settings.showTransitionBriefing && result.transitions.length > 0) {
+      this.settings.pendingTransitions = mergePendingTransitions(
+        this.settings.pendingTransitions,
+        result.transitions
+      )
+      pendingChanged = true
+    }
+    if (!snapshotChanged && !pendingChanged) return
+    await this.saveSettings()
+  }
+
+  async dismissTransitions(): Promise<void> {
+    this.settings.pendingTransitions = []
+    await this.saveSettings()
+    this.refreshMatrixViews()
+  }
+
+  private async handleIndexChanged(): Promise<void> {
+    await this.scanTransitions(true)
+    this.refreshMatrixViews()
   }
 
   openSettings(): void {
@@ -194,6 +230,7 @@ export default class EisenhowerPlugin extends Plugin {
 
     this.lastMove = { plan }
     if (!this.index.applyPlan(plan)) this.index.rebuild()
+    await this.scanTransitions(false)
     this.refreshMatrixViews()
     this.showUndoNotice(KO.notice.moved(plan.title))
   }
@@ -213,6 +250,7 @@ export default class EisenhowerPlugin extends Plugin {
     }
 
     if (!this.index.applyPlan(inverse)) this.index.rebuild()
+    await this.scanTransitions(false)
     this.refreshMatrixViews()
     new Notice(KO.notice.undone(inverse.title))
   }
