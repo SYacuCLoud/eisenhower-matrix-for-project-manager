@@ -21,7 +21,7 @@ export function makeMatrixTask(overrides: Partial<MatrixTask> = {}): MatrixTask 
     projectId: 'proj-1',
     parentId: null,
     archived: false,
-    mtime: 0,
+    mtime: Date.parse(`${TODAY}T00:00:00Z`),
     ...overrides
   }
 }

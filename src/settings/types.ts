@@ -9,6 +9,10 @@ export interface EisenSettings {
   urgencyWindowDays: number
   importantThresholdId: string
   subtaskMode: SubtaskMode
+  separateUnavailableTasks: boolean
+  showUrgencyLevels: boolean
+  detectNeglectedTasks: boolean
+  neglectedAfterDays: number
 
   // 표시
   maxCardsPerQuadrant: number
@@ -31,6 +35,10 @@ export const DEFAULT_SETTINGS: EisenSettings = {
   urgencyWindowDays: 3,
   importantThresholdId: 'high',
   subtaskMode: 'flat',
+  separateUnavailableTasks: true,
+  showUrgencyLevels: true,
+  detectNeglectedTasks: true,
+  neglectedAfterDays: 14,
 
   maxCardsPerQuadrant: 200,
   sortMode: 'due',
@@ -57,6 +65,7 @@ export function hydrateSettings(saved: unknown): EisenSettings {
   }
 
   out.urgencyWindowDays = clampInt(out.urgencyWindowDays, 1, 14, DEFAULT_SETTINGS.urgencyWindowDays)
+  out.neglectedAfterDays = clampInt(out.neglectedAfterDays, 3, 90, DEFAULT_SETTINGS.neglectedAfterDays)
   out.notUrgentPaddingDays = clampInt(out.notUrgentPaddingDays, 1, 30, DEFAULT_SETTINGS.notUrgentPaddingDays)
   out.maxCardsPerQuadrant = clampInt(out.maxCardsPerQuadrant, 20, 1000, DEFAULT_SETTINGS.maxCardsPerQuadrant)
 

@@ -73,6 +73,53 @@ export class EisenSettingTab extends PluginSettingTab {
           })
       )
 
+    new Setting(containerEl)
+      .setName(KO.settings.separateUnavailable)
+      .setDesc(KO.settings.separateUnavailableDesc)
+      .addToggle((t) =>
+        t.setValue(s.separateUnavailableTasks).onChange(async (v) => {
+          s.separateUnavailableTasks = v
+          await save()
+        })
+      )
+
+    new Setting(containerEl)
+      .setName(KO.settings.showUrgencyLevels)
+      .setDesc(KO.settings.showUrgencyLevelsDesc)
+      .addToggle((t) =>
+        t.setValue(s.showUrgencyLevels).onChange(async (v) => {
+          s.showUrgencyLevels = v
+          await save()
+        })
+      )
+
+    new Setting(containerEl)
+      .setName(KO.settings.detectNeglected)
+      .setDesc(KO.settings.detectNeglectedDesc)
+      .addToggle((t) =>
+        t.setValue(s.detectNeglectedTasks).onChange(async (v) => {
+          s.detectNeglectedTasks = v
+          await save()
+          this.display()
+        })
+      )
+
+    if (s.detectNeglectedTasks) {
+      new Setting(containerEl)
+        .setName(KO.settings.neglectedAfter)
+        .setDesc(KO.settings.neglectedAfterDesc)
+        .addSlider((sl) =>
+          sl
+            .setLimits(3, 90, 1)
+            .setValue(s.neglectedAfterDays)
+            .setDynamicTooltip()
+            .onChange(async (v) => {
+              s.neglectedAfterDays = v
+              await save()
+            })
+        )
+    }
+
     // ── 표시 ────────────────────────────────────────────────────────────
     new Setting(containerEl).setName(KO.settings.sectionDisplay).setHeading()
 

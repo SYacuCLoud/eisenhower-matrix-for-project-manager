@@ -1,6 +1,7 @@
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian'
 import { KO } from '../i18n/ko'
 import { canMoveToQuadrant, classify, importantIdsForThreshold } from '../model/classify'
+import { neglectInfo, taskAvailability, urgencyLevel } from '../model/attention'
 import { todayString } from '../model/dates'
 import {
   applyMatrixFilter,
@@ -18,6 +19,7 @@ import {
 } from '../pm/taskEditorBridge'
 import { safeAsync } from '../utils'
 import { renderQuadrant } from './Quadrant'
+import { renderTaskCard } from './TaskCard'
 import { renderToolbar } from './Toolbar'
 import type EisenhowerPlugin from '../main'
 
@@ -140,8 +142,70 @@ export class MatrixView extends ItemView {
       return
     }
 
-    const buckets = this.bucket(visible, ctx)
-    const totals = this.bucket(all, ctx)
+    const availability = (task: MatrixTask) => taskAvailability(task, ctx)
+    const unavailableAll = settings.separateUnavailableTasks
+      ? all.filter((task) => !availability(task).available)
+      : []
+    const unavailableVisible = settings.separateUnavailableTasks
+      ? visible.filter((task) => !availability(task).available)
+      : []
+    const matrixAll = settings.separateUnavailableTasks
+      ? all.filter((task) => availability(task).available)
+      : all
+    const matrixVisible = settings.separateUnavailableTasks
+      ? visible.filter((task) => availability(task).available)
+      : visible
+
+    const attentionProps = (task: MatrixTask) => {
+      const neglected = settings.detectNeglectedTasks
+        ? neglectInfo(task, ctx, settings.neglectedAfterDays, Date.now())
+        : { neglected: false, ageDays: 0, missingDue: false }
+      return {
+        unavailableReason: availability(task).reason,
+        urgencyLevel: settings.showUrgencyLevels ? urgencyLevel(task, ctx) : ('none' as const),
+        neglectedAgeDays: neglected.neglected ? neglected.ageDays : 0,
+        neglectedMissingDue: neglected.neglected && neglected.missingDue
+      }
+    }
+
+    if (settings.separateUnavailableTasks && unavailableAll.length > 0) {
+      const section = root.createDiv({ cls: 'eis-unavailable' })
+      const header = section.createDiv({ cls: 'eis-unavailable-header' })
+      const labels = header.createDiv()
+      labels.createDiv({ cls: 'eis-unavailable-title', text: KO.unavailable.title })
+      labels.createDiv({ cls: 'eis-unavailable-subtitle', text: KO.unavailable.subtitle })
+      header.createDiv({
+        cls: 'eis-unavailable-count',
+        text: filterActive
+          ? `${unavailableVisible.length} / ${unavailableAll.length}`
+          : String(unavailableVisible.length)
+      })
+      const cards = section.createDiv({ cls: 'eis-unavailable-cards' })
+      if (unavailableVisible.length === 0) {
+        cards.createDiv({ cls: 'eis-empty', text: KO.unavailable.empty })
+      } else {
+        for (const task of sortCards(unavailableVisible, settings.sortMode, ctx).slice(0, settings.maxCardsPerQuadrant)) {
+          renderTaskCard(cards, {
+            task,
+            today: ctx.today,
+            priorities: palettes.priorities,
+            projectTitle: this.plugin.index.projectTitle(task.projectId),
+            parentTitle: this.parentTitle(task),
+            currentQuadrant: classify(task, ctx),
+            availableMoveTargets: QUADRANT_ORDER.filter((target) => canMoveToQuadrant(task, target, ctx)),
+            ...attentionProps(task),
+            onOpen: (item) => void this.openTaskEditorInProjectManager(item),
+            onOpenNote: (item) => void this.app.workspace.openLinkText(item.filePath, '', false),
+            onMove: safeAsync(async (item, target) => {
+              await this.plugin.requestMove(item, target)
+            })
+          })
+        }
+      }
+    }
+
+    const buckets = this.bucket(matrixVisible, ctx)
+    const totals = this.bucket(matrixAll, ctx)
 
     const grid = root.createDiv({ cls: 'eis-grid' })
     for (const q of QUADRANT_ORDER) {
@@ -158,7 +222,8 @@ export class MatrixView extends ItemView {
           parentTitle: this.parentTitle(task),
           availableMoveTargets: QUADRANT_ORDER.filter((target) =>
             canMoveToQuadrant(task, target, ctx)
-          )
+          ),
+          ...attentionProps(task)
         }),
         onOpen: (task) => void this.openTaskEditorInProjectManager(task),
         onOpenNote: (task) => void this.app.workspace.openLinkText(task.filePath, '', false),

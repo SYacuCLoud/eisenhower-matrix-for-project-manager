@@ -15,6 +15,9 @@ Obsidian의 [Project Manager](https://github.com/StepanKropachev/obsidian-pm)용
 - 데스크톱과 모바일에 대응하는 반응형 레이아웃
 - 카드 클릭 시 Project Manager 작업 편집기 열기
 - rollup 모드에서 하위 작업 검색과 긴급·중요·완료 개수 요약
+- `Blocked` 상태와 미래 시작일 작업을 실행 불가 영역으로 분리
+- 긴급 작업의 `기한 초과`·`오늘 마감`·`마감 임박` 단계 표시
+- 오랫동안 수정되지 않은 중요 작업의 방치 위험 탐지
 
 ## 요구 사항
 

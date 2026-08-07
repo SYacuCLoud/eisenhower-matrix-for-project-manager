@@ -50,7 +50,20 @@ export const KO = {
     subtasks: (n: number) => `하위 ${n}`,
     rollupUrgent: (n: number) => `긴급 ${n}`,
     rollupImportant: (n: number) => `중요 ${n}`,
-    rollupCompleted: (n: number) => `완료 ${n}`
+    rollupCompleted: (n: number) => `완료 ${n}`,
+    blockedStatus: '차단됨',
+    futureStart: (date: string) => `${date} 시작`,
+    urgencyOverdue: '기한 초과',
+    urgencyToday: '오늘 마감',
+    urgencySoon: '마감 임박',
+    neglected: (days: number) => `${days}일 방치`,
+    missingDue: '마감일 없음'
+  },
+
+  unavailable: {
+    title: '지금 실행할 수 없음',
+    subtitle: '차단 상태 또는 시작일 전',
+    empty: '실행을 막는 작업이 없습니다.'
   },
 
   menu: {
@@ -122,6 +135,14 @@ export const KO = {
     subtaskFlat: '개별 표시',
     subtaskRollup: '상위 작업으로 합치기',
     subtaskHide: '숨기기',
+    separateUnavailable: '실행 불가능한 작업 분리',
+    separateUnavailableDesc: 'Blocked 상태와 미래 시작일 작업을 사분면 위의 별도 영역에 표시합니다.',
+    showUrgencyLevels: '긴급도 단계 표시',
+    showUrgencyLevelsDesc: '긴급 작업을 기한 초과·오늘 마감·마감 임박으로 구분합니다.',
+    detectNeglected: '방치된 중요 작업 탐지',
+    detectNeglectedDesc: '오랫동안 수정되지 않은 중요 작업에 방치 배지를 표시합니다.',
+    neglectedAfter: '방치 판정 일수',
+    neglectedAfterDesc: '마지막 수정 이후 이 기간이 지나면 방치된 것으로 봅니다.',
 
     sectionDisplay: '표시',
     showCompleted: '완료된 작업 표시',

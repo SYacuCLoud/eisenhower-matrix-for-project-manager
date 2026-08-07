@@ -97,6 +97,67 @@
   min-height: 0;
 }
 
+.eis-unavailable {
+  flex: 0 0 auto;
+  padding: var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-left: 3px solid var(--color-orange);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.eis-unavailable-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-3);
+  margin-bottom: var(--size-4-2);
+}
+
+.eis-unavailable-title {
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+}
+
+.eis-unavailable-subtitle,
+.eis-unavailable-count {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.eis-unavailable-cards {
+  display: grid;
+  grid-auto-columns: minmax(16rem, 22rem);
+  grid-auto-flow: column;
+  gap: var(--size-4-2);
+  overflow-x: auto;
+  padding-bottom: var(--size-2-1);
+}
+
+.eis-card--unavailable {
+  opacity: 0.78;
+}
+
+.eis-badge--blocked,
+.eis-badge--urgency-overdue {
+  color: var(--text-error);
+  border-color: color-mix(in srgb, var(--text-error) 45%, transparent);
+}
+
+.eis-badge--future {
+  color: var(--text-muted);
+}
+
+.eis-badge--urgency-today,
+.eis-badge--urgency-soon {
+  color: var(--color-orange);
+}
+
+.eis-badge--neglected {
+  color: var(--color-purple);
+  border-color: color-mix(in srgb, var(--color-purple) 45%, transparent);
+}
+
 .eis-quadrant {
   display: flex;
   flex-direction: column;

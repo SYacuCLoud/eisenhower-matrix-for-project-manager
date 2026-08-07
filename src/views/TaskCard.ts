@@ -1,6 +1,7 @@
 import { Menu, Platform } from 'obsidian'
 import { KO } from '../i18n/ko'
 import { relativeDueKo } from '../model/dates'
+import type { UnavailableReason, UrgencyLevel } from '../model/attention'
 import { QUADRANT_ORDER, type MatrixTask, type QuadrantId } from '../model/types'
 import { priorityColor, priorityLabel } from '../pm/bridge'
 import type { PriorityConfig } from '../pm/pmTypes'
@@ -17,6 +18,10 @@ export interface TaskCardProps {
   parentTitle: string
   currentQuadrant: QuadrantId
   availableMoveTargets: readonly QuadrantId[]
+  unavailableReason: UnavailableReason | null
+  urgencyLevel: UrgencyLevel
+  neglectedAgeDays: number
+  neglectedMissingDue: boolean
   /** 카드 기본 동작: Project Manager 프로젝트 화면 열기(불가능하면 노트로 폴백). */
   onOpen: (task: MatrixTask) => void
   /** 우클릭 메뉴에서 실제 Markdown 작업 노트를 연다. */
@@ -33,9 +38,10 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   card.setAttr('aria-label', KO.card.openTask(task.title))
   card.setAttr('aria-haspopup', 'menu')
   if (task.archived) card.addClass('eis-card--archived')
+  if (props.unavailableReason) card.addClass('eis-card--unavailable')
 
   // 보관된 작업을 옮기면 PM 의 아카이브 의미와 싸우게 된다.
-  const draggable = !task.archived && !Platform.isMobile
+  const draggable = !task.archived && !props.unavailableReason && !Platform.isMobile
   card.draggable = draggable
 
   const color = priorityColor(task.priority, props.priorities)
@@ -78,6 +84,36 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--rollup-completed',
       text: KO.card.rollupCompleted(task.rolledUpCompletedCount)
+    })
+  }
+  if (props.unavailableReason === 'blocked-status') {
+    titleRow.createSpan({ cls: 'eis-badge eis-badge--blocked', text: KO.card.blockedStatus })
+  } else if (props.unavailableReason === 'future-start') {
+    titleRow.createSpan({
+      cls: 'eis-badge eis-badge--future',
+      text: KO.card.futureStart(task.start)
+    })
+  }
+  if (props.urgencyLevel !== 'none') {
+    const urgencyText = {
+      overdue: KO.card.urgencyOverdue,
+      today: KO.card.urgencyToday,
+      soon: KO.card.urgencySoon
+    }[props.urgencyLevel]
+    titleRow.createSpan({
+      cls: `eis-badge eis-badge--urgency eis-badge--urgency-${props.urgencyLevel}`,
+      text: urgencyText
+    })
+  }
+  if (props.neglectedAgeDays > 0) {
+    titleRow.createSpan({
+      cls: 'eis-badge eis-badge--neglected',
+      text: KO.card.neglected(props.neglectedAgeDays),
+      attr: {
+        title: props.neglectedMissingDue
+          ? `${KO.card.neglected(props.neglectedAgeDays)} · ${KO.card.missingDue}`
+          : KO.card.neglected(props.neglectedAgeDays)
+      }
     })
   }
 
