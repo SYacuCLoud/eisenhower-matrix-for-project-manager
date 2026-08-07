@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  tryOpenNewTaskModal,
   tryOpenTaskEditorApi,
   tryOpenTaskEditorFromProjectView,
   type PmTaskEditorRequest
 } from '../src/pm/taskEditorBridge'
+import type { TFile } from 'obsidian'
 
 const request: PmTaskEditorRequest = {
   projectPath: 'Projects/demo.md',
@@ -35,6 +37,29 @@ describe('Project Manager 공개 API 연동', () => {
     const openTaskEditor = vi.fn()
     expect(await tryOpenTaskEditorApi({ api: { openTaskEditor } }, request)).toBe(false)
     expect(openTaskEditor).not.toHaveBeenCalled()
+  })
+})
+
+describe('Project Manager 작업 생성 호환 경로', () => {
+  it('프로젝트를 로드하고 기본값과 함께 생성 모달을 연다', async () => {
+    const project = { id: 'project-1' }
+    const file = { path: 'Projects/demo.md' } as TFile
+    const openTaskModalForProject = vi.fn(function (this: unknown) {
+      expect(this).toBe(plugin)
+    })
+    const plugin = {
+      store: { loadProject: vi.fn().mockResolvedValue(project) },
+      openTaskModalForProject
+    }
+    const defaults = { due: '2026-08-08', priority: 'high' }
+
+    expect(await tryOpenNewTaskModal(plugin, file, defaults)).toBe(true)
+    expect(plugin.store.loadProject).toHaveBeenCalledWith(file)
+    expect(openTaskModalForProject).toHaveBeenCalledWith(project, null, defaults)
+  })
+
+  it('필요한 capability가 없으면 호출하지 않는다', async () => {
+    expect(await tryOpenNewTaskModal({}, {} as TFile, { due: '', priority: 'low' })).toBe(false)
   })
 })
 

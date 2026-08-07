@@ -1,7 +1,46 @@
+import type { TFile } from 'obsidian'
+
 export interface PmTaskEditorRequest {
   projectPath: string
   taskId: string
   taskPath: string
+}
+
+export interface NewTaskDefaults {
+  due: string
+  priority: string
+}
+
+interface PmCreateBridge {
+  store?: {
+    loadProject?: (file: TFile) => Promise<unknown>
+  }
+  openTaskModalForProject?: (
+    project: unknown,
+    parentId: string | null,
+    defaults?: NewTaskDefaults
+  ) => void
+}
+
+/** PM 1.8.x 내부 capability. 존재 여부를 확인하고 실패 시 false로 안전하게 폴백한다. */
+export async function tryOpenNewTaskModal(
+  plugin: unknown,
+  projectFile: TFile,
+  defaults: NewTaskDefaults
+): Promise<boolean> {
+  if (!plugin || typeof plugin !== 'object') return false
+  const bridge = plugin as PmCreateBridge
+  if (typeof bridge.store?.loadProject !== 'function') return false
+  if (typeof bridge.openTaskModalForProject !== 'function') return false
+  try {
+    const project = await bridge.store.loadProject(projectFile)
+    if (!project) return false
+    bridge.openTaskModalForProject.call(plugin, project, null, defaults)
+    return true
+  } catch (error) {
+    console.warn('[EIS] Project Manager 작업 생성 모달을 열지 못했습니다.', error)
+    return false
+  }
 }
 
 interface PmTaskEditorApi {

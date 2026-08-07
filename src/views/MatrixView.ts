@@ -1,8 +1,9 @@
-import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian'
+import { ItemView, Menu, Notice, TFile, type WorkspaceLeaf } from 'obsidian'
 import { KO } from '../i18n/ko'
 import { canMoveToQuadrant, classify, importantIdsForThreshold } from '../model/classify'
 import { neglectInfo, taskAvailability, urgencyLevel } from '../model/attention'
 import { todayString } from '../model/dates'
+import { defaultsForQuadrant } from '../model/createTask'
 import {
   applyMatrixFilter,
   isDefaultFilter,
@@ -15,6 +16,7 @@ import { QUADRANT_ORDER, type ClassifyContext, type MatrixTask, type QuadrantId 
 import { readPmPalettes } from '../pm/bridge'
 import {
   tryOpenTaskEditorApi,
+  tryOpenNewTaskModal,
   tryOpenTaskEditorFromProjectView
 } from '../pm/taskEditorBridge'
 import { safeAsync } from '../utils'
@@ -92,6 +94,7 @@ export class MatrixView extends ItemView {
     renderToolbar(root, {
       filter: settings.filter,
       sortMode: settings.sortMode,
+      cardDensity: settings.cardDensity,
       projects,
       hasUnprojected: this.plugin.index.all().some((t) => !t.projectId),
       onFilterChange: safeAsync(async (patch) => {
@@ -101,6 +104,11 @@ export class MatrixView extends ItemView {
       }),
       onSortChange: safeAsync(async (mode) => {
         settings.sortMode = mode
+        this.render()
+        await this.plugin.saveSettings()
+      }),
+      onDensityChange: safeAsync(async (density) => {
+        settings.cardDensity = density
         this.render()
         await this.plugin.saveSettings()
       }),
@@ -194,6 +202,8 @@ export class MatrixView extends ItemView {
             task,
             today: ctx.today,
             priorities: palettes.priorities,
+            statuses: palettes.statuses,
+            density: settings.cardDensity,
             projectTitle: this.plugin.index.projectTitle(task.projectId),
             parentTitle: this.parentTitle(task),
             currentQuadrant: classify(task, ctx),
@@ -223,6 +233,8 @@ export class MatrixView extends ItemView {
         cardProps: (task) => ({
           today: ctx.today,
           priorities: palettes.priorities,
+          statuses: palettes.statuses,
+          density: settings.cardDensity,
           projectTitle: this.plugin.index.projectTitle(task.projectId),
           parentTitle: this.parentTitle(task),
           availableMoveTargets: QUADRANT_ORDER.filter((target) =>
@@ -235,6 +247,7 @@ export class MatrixView extends ItemView {
         onMove: safeAsync(async (task: MatrixTask, target: QuadrantId) => {
           await this.plugin.requestMove(task, target)
         }),
+        onAdd: (event, quadrant) => this.chooseProjectForNewTask(event, quadrant, ctx),
         onDrop: safeAsync(async (filePath: string, target: QuadrantId) => {
           const task = this.plugin.index.get(filePath)
           if (!task) {
@@ -274,6 +287,88 @@ export class MatrixView extends ItemView {
     return this.plugin.index.all().find((t) => t.id === task.parentId)?.title ?? ''
   }
 
+  private chooseProjectForNewTask(
+    event: MouseEvent,
+    quadrant: QuadrantId,
+    ctx: ClassifyContext
+  ): void {
+    const allProjects = this.plugin.index.allProjects()
+    if (allProjects.length === 0) {
+      new Notice(KO.notice.noProjects)
+      return
+    }
+    const selectedIds = this.plugin.settings.filter.projectIds.filter(Boolean)
+    const selected = allProjects.filter((project) => selectedIds.includes(project.id))
+    const candidates = selected.length > 0 ? selected : allProjects
+    if (candidates.length === 1 && candidates[0]) {
+      void this.openNewTaskModal(candidates[0].id, quadrant, ctx)
+      return
+    }
+
+    const menu = new Menu()
+    menu.setNoIcon()
+    for (const project of candidates) {
+      menu.addItem((item) =>
+        item
+          .setTitle(`${project.icon ? `${project.icon} ` : ''}${project.title}`)
+          .onClick(() => void this.openNewTaskModal(project.id, quadrant, ctx))
+      )
+    }
+    menu.showAtMouseEvent(event)
+  }
+
+  private async openNewTaskModal(
+    projectId: string,
+    quadrant: QuadrantId,
+    ctx: ClassifyContext
+  ): Promise<void> {
+    const projectPath = this.plugin.index.projectFilePath(projectId)
+    const projectFile = this.app.vault.getAbstractFileByPath(projectPath)
+    const pmPlugin = this.app.plugins?.getPlugin?.('project-manager')
+    if (!(projectFile instanceof TFile) || !pmPlugin) {
+      new Notice(KO.notice.noProjects)
+      return
+    }
+
+    const settings = this.plugin.settings
+    const defaults = defaultsForQuadrant(quadrant, ctx, {
+      urgentDueStrategy: settings.urgentDueStrategy,
+      notUrgentStrategy: settings.notUrgentStrategy,
+      notUrgentPaddingDays: settings.notUrgentPaddingDays,
+      importantThresholdId: settings.importantThresholdId
+    })
+    if (await tryOpenNewTaskModal(pmPlugin, projectFile, defaults)) return
+
+    const leaf = await this.openProjectLeaf(projectPath)
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const buttons = Array.from(
+        leaf.view.containerEl.querySelectorAll<HTMLButtonElement>('.pm-toolbar-right button')
+      )
+      const add = buttons.find((button) => button.textContent?.toLocaleLowerCase().includes('add task'))
+      if (add) {
+        add.click()
+        new Notice(KO.notice.createTaskFallback)
+        return
+      }
+      await nextFrame()
+    }
+    new Notice(KO.notice.createTaskFallback)
+  }
+
+  private async openProjectLeaf(projectPath: string): Promise<WorkspaceLeaf> {
+    const viewType = 'pm-project'
+    const existing = this.app.workspace.getLeavesOfType(viewType).find((leaf) => {
+      const state = leaf.getViewState().state as { filePath?: unknown } | undefined
+      return state?.filePath === projectPath
+    })
+    const leaf = existing ?? this.app.workspace.getLeaf('tab')
+    if (!existing) {
+      await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: true })
+    }
+    await this.app.workspace.revealLeaf(leaf)
+    return leaf
+  }
+
   /** 공개 API → 현재 DOM → PM 1.8 TableView 편집 동작 → 실제 노트 순서로 폴백한다. */
   private async openTaskEditorInProjectManager(task: MatrixTask): Promise<void> {
     const projectPath = this.plugin.index.projectFilePath(task.projectId)
@@ -293,16 +388,7 @@ export class MatrixView extends ItemView {
       return
     }
 
-    const viewType = 'pm-project'
-    const existing = this.app.workspace.getLeavesOfType(viewType).find((leaf) => {
-      const state = leaf.getViewState().state as { filePath?: unknown } | undefined
-      return state?.filePath === projectPath
-    })
-    const leaf = existing ?? this.app.workspace.getLeaf('tab')
-    if (!existing) {
-      await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: true })
-    }
-    await this.app.workspace.revealLeaf(leaf)
+    const leaf = await this.openProjectLeaf(projectPath)
 
     // setViewState가 프로젝트 로드를 기다리지만, Obsidian/서드파티 leaf 복원기는
     // DOM 연결을 다음 프레임으로 미룰 수 있어 짧게 재시도한다.

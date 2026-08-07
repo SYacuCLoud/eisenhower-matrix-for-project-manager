@@ -1,3 +1,4 @@
+import { setIcon } from 'obsidian'
 import { KO } from '../i18n/ko'
 import type { MatrixTask, QuadrantId } from '../model/types'
 import { safeAsync } from '../utils'
@@ -17,6 +18,7 @@ export interface QuadrantProps {
   onOpen: TaskCardProps['onOpen']
   onOpenNote: TaskCardProps['onOpenNote']
   onMove: TaskCardProps['onMove']
+  onAdd: (event: MouseEvent, quadrant: QuadrantId) => void
   onDrop: (filePath: string, target: QuadrantId) => void | Promise<void>
 }
 
@@ -35,10 +37,16 @@ export function renderQuadrant(parent: HTMLElement, props: QuadrantProps): Quadr
   const titles = header.createDiv({ cls: 'eis-quadrant-titles' })
   titles.createDiv({ cls: 'eis-quadrant-subtitle', text: labels.subtitle })
   titles.createDiv({ cls: 'eis-quadrant-title', text: labels.title })
-  header.createDiv({
+  const actions = header.createDiv({ cls: 'eis-quadrant-actions' })
+  actions.createDiv({
     cls: 'eis-quadrant-count',
     text: props.filterActive ? `${props.tasks.length} / ${props.totalCount}` : String(props.tasks.length)
   })
+  const add = actions.createEl('button', { cls: 'eis-quadrant-add' })
+  add.setAttr('aria-label', KO.quadrantAction.addTask(labels.subtitle))
+  add.setAttr('title', KO.quadrantAction.addTask(labels.subtitle))
+  setIcon(add, 'plus')
+  add.addEventListener('click', (event) => props.onAdd(event, props.id))
 
   const cardsEl = root.createDiv({ cls: 'eis-cards' })
   cardsEl.dataset['quadrant'] = props.id

@@ -1,20 +1,23 @@
 import { Menu, setIcon } from 'obsidian'
 import { KO } from '../i18n/ko'
 import { isDefaultFilter } from '../model/filter'
-import type { MatrixFilter, ProjectMeta, SortMode } from '../model/types'
+import type { CardDensity, MatrixFilter, ProjectMeta, SortMode } from '../model/types'
 
 export interface ToolbarProps {
   filter: MatrixFilter
   sortMode: SortMode
+  cardDensity: CardDensity
   projects: readonly ProjectMeta[]
   hasUnprojected: boolean
   onFilterChange: (patch: Partial<MatrixFilter>) => void
   onSortChange: (mode: SortMode) => void
+  onDensityChange: (density: CardDensity) => void
   onReset: () => void
   onRefresh: () => void
 }
 
 const SORT_MODES: readonly SortMode[] = ['due', 'priority', 'title', 'updated']
+const CARD_DENSITIES: readonly CardDensity[] = ['compact', 'default', 'detailed']
 
 export function renderToolbar(parent: HTMLElement, props: ToolbarProps): void {
   const bar = parent.createDiv({ cls: 'eis-toolbar' })
@@ -35,6 +38,7 @@ export function renderToolbar(parent: HTMLElement, props: ToolbarProps): void {
 
   renderProjectPicker(bar, props)
   renderSortPicker(bar, props)
+  renderDensityPicker(bar, props)
 
   renderToggle(bar, KO.toolbar.showCompleted, props.filter.showCompleted, (v) =>
     props.onFilterChange({ showCompleted: v })
@@ -55,6 +59,25 @@ export function renderToolbar(parent: HTMLElement, props: ToolbarProps): void {
   refresh.setAttr('aria-label', KO.toolbar.refresh)
   setIcon(refresh, 'refresh-cw')
   refresh.addEventListener('click', () => props.onRefresh())
+}
+
+function renderDensityPicker(bar: HTMLElement, props: ToolbarProps): void {
+  const btn = bar.createEl('button', {
+    cls: 'eis-btn eis-btn--dropdown',
+    text: `${KO.toolbar.density}: ${KO.density[props.cardDensity]}`
+  })
+  btn.addEventListener('click', (event) => {
+    const menu = new Menu()
+    for (const density of CARD_DENSITIES) {
+      menu.addItem((item) =>
+        item
+          .setTitle(KO.density[density])
+          .setChecked(props.cardDensity === density)
+          .onClick(() => props.onDensityChange(density))
+      )
+    }
+    menu.showAtMouseEvent(event)
+  })
 }
 
 function renderProjectPicker(bar: HTMLElement, props: ToolbarProps): void {

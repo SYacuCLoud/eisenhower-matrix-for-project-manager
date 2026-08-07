@@ -55,6 +55,8 @@ export type SortMode = 'due' | 'priority' | 'title' | 'updated'
 
 export type SubtaskMode = 'flat' | 'rollup' | 'hide'
 
+export type CardDensity = 'compact' | 'default' | 'detailed'
+
 export interface MatrixFilter {
   text: string
   /** [] = 전체 */

@@ -133,3 +133,7 @@ export function priorityLabel(id: string, priorities: readonly PriorityConfig[])
 export function priorityColor(id: string, priorities: readonly PriorityConfig[]): string {
   return priorities.find((p) => p.id === id)?.color ?? ''
 }
+
+export function statusLabel(id: string, statuses: readonly StatusConfig[]): string {
+  return statuses.find((status) => status.id === id)?.label ?? id
+}

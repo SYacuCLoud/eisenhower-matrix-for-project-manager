@@ -31,7 +31,14 @@ export const KO = {
     showArchived: '보관 표시',
     reset: '초기화',
     refresh: '새로고침',
-    filterActive: '필터 적용 중'
+    filterActive: '필터 적용 중',
+    density: '카드'
+  },
+
+  density: {
+    compact: '간결',
+    default: '기본',
+    detailed: '상세'
   },
 
   sort: {
@@ -57,7 +64,9 @@ export const KO = {
     urgencyToday: '오늘 마감',
     urgencySoon: '마감 임박',
     neglected: (days: number) => `${days}일 방치`,
-    missingDue: '마감일 없음'
+    missingDue: '마감일 없음',
+    start: (date: string) => `시작 ${date}`,
+    progress: (value: number) => `진행 ${value}%`
   },
 
   unavailable: {
@@ -127,7 +136,14 @@ export const KO = {
     archivedNoDrag: '보관된 작업은 이동할 수 없습니다.',
     completedNotUrgent: '완료된 작업은 긴급 분면으로 이동할 수 없습니다.',
     pmTaskEditorFallback:
-      'Project Manager 작업 편집기를 열지 못해 실제 작업 노트를 열었습니다.'
+      'Project Manager 작업 편집기를 열지 못해 실제 작업 노트를 열었습니다.',
+    noProjects: '작업을 추가할 Project Manager 프로젝트가 없습니다.',
+    createTaskFallback: '기본값을 미리 채우지 못해 Project Manager의 일반 작업 추가 창을 열었습니다.'
+  },
+
+  quadrantAction: {
+    addTask: (quadrant: string) => `${quadrant}에 작업 추가`,
+    chooseProject: '프로젝트 선택'
   },
 
   error: {
@@ -197,6 +213,6 @@ export const KO = {
     pmStatusOff: '없음 — 기본값을 사용합니다.',
     safetyNote: '안전 규칙',
     safetyNoteDesc:
-      '이 플러그인은 작업 파일의 마감일·우선순위·시작일만 수정하며 본문과 다른 필드는 절대 건드리지 않습니다.'
+      '분면 이동은 마감일·우선순위·시작일만 수정합니다. 새 작업은 Project Manager의 생성 창과 저장 경로를 사용합니다.'
   }
 } as const

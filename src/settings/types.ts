@@ -1,5 +1,5 @@
 import { makeDefaultFilter } from '../model/filter'
-import type { MatrixFilter, QuadrantId, SortMode, SubtaskMode } from '../model/types'
+import type { CardDensity, MatrixFilter, QuadrantId, SortMode, SubtaskMode } from '../model/types'
 import type { TaskStateSnapshot, TaskTransition } from '../model/transitions'
 
 export type UrgentDueStrategy = 'today' | 'tomorrow' | 'windowEdge'
@@ -20,6 +20,7 @@ export interface EisenSettings {
   sortMode: SortMode
   filter: MatrixFilter
   collapsedQuadrants: QuadrantId[]
+  cardDensity: CardDensity
 
   // 드래그 동작
   confirmOnDrop: boolean
@@ -48,6 +49,7 @@ export const DEFAULT_SETTINGS: EisenSettings = {
   sortMode: 'due',
   filter: makeDefaultFilter(),
   collapsedQuadrants: [],
+  cardDensity: 'default',
 
   confirmOnDrop: true,
   urgentDueStrategy: 'tomorrow',
@@ -85,6 +87,9 @@ export function hydrateSettings(saved: unknown): EisenSettings {
   }
   if (!['flat', 'rollup', 'hide'].includes(out.subtaskMode)) out.subtaskMode = DEFAULT_SETTINGS.subtaskMode
   if (!['due', 'priority', 'title', 'updated'].includes(out.sortMode)) out.sortMode = DEFAULT_SETTINGS.sortMode
+  if (!['compact', 'default', 'detailed'].includes(out.cardDensity)) {
+    out.cardDensity = DEFAULT_SETTINGS.cardDensity
+  }
   if (!['today', 'tomorrow', 'windowEdge'].includes(out.urgentDueStrategy)) {
     out.urgentDueStrategy = DEFAULT_SETTINGS.urgentDueStrategy
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { priorityColor, priorityLabel, readPmPalettes } from '../src/pm/bridge'
+import { priorityColor, priorityLabel, readPmPalettes, statusLabel } from '../src/pm/bridge'
 import { FALLBACK_PRIORITIES } from '../src/pm/pmTypes'
 import { asApp, FakeApp } from './fakeApp'
 
@@ -98,5 +98,10 @@ describe('priorityLabel / priorityColor', () => {
     expect(priorityLabel('high', FALLBACK_PRIORITIES)).toBe('High')
     expect(priorityLabel('nope', FALLBACK_PRIORITIES)).toBe('nope')
     expect(priorityColor('nope', FALLBACK_PRIORITIES)).toBe('')
+  })
+
+  it('상태 label을 찾고 없으면 id를 반환한다', () => {
+    expect(statusLabel('todo', PM_SETTINGS.statuses)).toBe('할 일')
+    expect(statusLabel('missing', PM_SETTINGS.statuses)).toBe('missing')
   })
 })

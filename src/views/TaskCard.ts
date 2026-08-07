@@ -2,9 +2,9 @@ import { Menu, Platform } from 'obsidian'
 import { KO } from '../i18n/ko'
 import { relativeDueKo } from '../model/dates'
 import type { UnavailableReason, UrgencyLevel } from '../model/attention'
-import { QUADRANT_ORDER, type MatrixTask, type QuadrantId } from '../model/types'
-import { priorityColor, priorityLabel } from '../pm/bridge'
-import type { PriorityConfig } from '../pm/pmTypes'
+import { QUADRANT_ORDER, type CardDensity, type MatrixTask, type QuadrantId } from '../model/types'
+import { priorityColor, priorityLabel, statusLabel } from '../pm/bridge'
+import type { PriorityConfig, StatusConfig } from '../pm/pmTypes'
 import {
   bindTouchLongPress,
   isCardActivationKey
@@ -14,6 +14,8 @@ export interface TaskCardProps {
   task: MatrixTask
   today: string
   priorities: readonly PriorityConfig[]
+  statuses: readonly StatusConfig[]
+  density: CardDensity
   projectTitle: string
   parentTitle: string
   currentQuadrant: QuadrantId
@@ -31,7 +33,10 @@ export interface TaskCardProps {
 
 export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLElement {
   const { task } = props
+  const compact = props.density === 'compact'
+  const detailed = props.density === 'detailed'
   const card = parent.createDiv({ cls: 'eis-card' })
+  card.addClass(`eis-card--${props.density}`)
   card.dataset['filePath'] = task.filePath
   card.setAttr('role', 'button')
   card.setAttr('tabindex', '0')
@@ -50,7 +55,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
 
   const body = card.createDiv({ cls: 'eis-card-body' })
 
-  if (props.parentTitle) {
+  if (!compact && props.parentTitle) {
     body.createDiv({ cls: 'eis-card-parent', text: `↳ ${props.parentTitle}` })
   }
 
@@ -59,42 +64,42 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   if (task.type === 'milestone') {
     titleRow.createSpan({ cls: 'eis-badge eis-badge--milestone', text: 'M' })
   }
-  if (task.archived) {
+  if (!compact && task.archived) {
     titleRow.createSpan({ cls: 'eis-badge eis-badge--archived', text: KO.card.archived })
   }
-  if (task.rolledUpSubtaskCount) {
+  if (!compact && task.rolledUpSubtaskCount) {
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--subtasks',
       text: KO.card.subtasks(task.rolledUpSubtaskCount)
     })
   }
-  if (task.rolledUpUrgentCount) {
+  if (!compact && task.rolledUpUrgentCount) {
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--rollup-urgent',
       text: KO.card.rollupUrgent(task.rolledUpUrgentCount)
     })
   }
-  if (task.rolledUpImportantCount) {
+  if (!compact && task.rolledUpImportantCount) {
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--rollup-important',
       text: KO.card.rollupImportant(task.rolledUpImportantCount)
     })
   }
-  if (task.rolledUpCompletedCount) {
+  if (!compact && task.rolledUpCompletedCount) {
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--rollup-completed',
       text: KO.card.rollupCompleted(task.rolledUpCompletedCount)
     })
   }
-  if (props.unavailableReason === 'blocked-status') {
+  if (!compact && props.unavailableReason === 'blocked-status') {
     titleRow.createSpan({ cls: 'eis-badge eis-badge--blocked', text: KO.card.blockedStatus })
-  } else if (props.unavailableReason === 'future-start') {
+  } else if (!compact && props.unavailableReason === 'future-start') {
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--future',
       text: KO.card.futureStart(task.start)
     })
   }
-  if (props.urgencyLevel !== 'none') {
+  if (!compact && props.urgencyLevel !== 'none') {
     const urgencyText = {
       overdue: KO.card.urgencyOverdue,
       today: KO.card.urgencyToday,
@@ -105,7 +110,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
       text: urgencyText
     })
   }
-  if (props.neglectedAgeDays > 0) {
+  if (!compact && props.neglectedAgeDays > 0) {
     titleRow.createSpan({
       cls: 'eis-badge eis-badge--neglected',
       text: KO.card.neglected(props.neglectedAgeDays),
@@ -117,26 +122,40 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     })
   }
 
-  const meta = body.createDiv({ cls: 'eis-card-meta' })
+  const meta = compact ? null : body.createDiv({ cls: 'eis-card-meta' })
 
-  if (task.due) {
+  if (meta && task.due) {
     const rel = relativeDueKo(task.due, props.today)
     const chip = meta.createSpan({ cls: 'eis-chip eis-chip--due', text: `${task.due} · ${rel.text}` })
     chip.addClass(`eis-chip--${rel.tone}`)
   }
 
   const pLabel = priorityLabel(task.priority, props.priorities)
-  if (pLabel) {
+  if (meta && pLabel) {
     const chip = meta.createSpan({ cls: 'eis-chip eis-chip--priority', text: pLabel })
     if (color) chip.style.borderColor = color
   }
 
-  if (props.projectTitle) {
+  if (meta && props.projectTitle) {
     meta.createSpan({ cls: 'eis-chip eis-chip--project', text: props.projectTitle })
   }
 
-  for (const tag of task.tags.slice(0, 3)) {
-    meta.createSpan({ cls: 'eis-chip eis-chip--tag', text: `#${tag}` })
+  if (meta) {
+    for (const tag of task.tags.slice(0, detailed ? 6 : 3)) {
+      meta.createSpan({ cls: 'eis-chip eis-chip--tag', text: `#${tag}` })
+    }
+  }
+
+  if (meta && detailed) {
+    const status = statusLabel(task.status, props.statuses)
+    if (status) meta.createSpan({ cls: 'eis-chip eis-chip--status', text: status })
+    if (task.start) meta.createSpan({ cls: 'eis-chip eis-chip--start', text: KO.card.start(task.start) })
+    for (const assignee of task.assignees.slice(0, 4)) {
+      meta.createSpan({ cls: 'eis-chip eis-chip--assignee', text: `@${assignee}` })
+    }
+    if (task.progress > 0) {
+      meta.createSpan({ cls: 'eis-chip eis-chip--progress', text: KO.card.progress(task.progress) })
+    }
   }
 
   let suppressClickUntil = 0

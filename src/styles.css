@@ -264,6 +264,39 @@
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
+.eis-quadrant-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--size-2-2);
+}
+
+.eis-quadrant-add {
+  display: inline-grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.eis-quadrant-add:hover,
+.eis-quadrant-add:focus-visible {
+  border-color: var(--background-modifier-border-hover);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  outline: none;
+}
+
+.eis-quadrant-add svg {
+  width: 1rem;
+  height: 1rem;
+}
+
 .eis-quadrant-titles {
   min-width: 0;
 }
@@ -363,6 +396,14 @@
 .eis-card-body {
   min-width: 0;
   padding: var(--size-4-2) var(--size-4-3);
+}
+
+.eis-card--compact .eis-card-body {
+  padding-block: var(--size-2-2);
+}
+
+.eis-card--compact .eis-card-title {
+  font-size: var(--font-ui-small);
 }
 
 .eis-card-parent {
