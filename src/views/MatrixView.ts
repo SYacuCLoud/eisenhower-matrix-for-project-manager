@@ -30,6 +30,8 @@ export const EISEN_MATRIX_VIEW_TYPE = 'eisenhower-matrix-for-project-manager'
 export class MatrixView extends ItemView {
   /** 늦게 도착한 비동기 갱신이 최신 렌더를 덮어쓰지 못하게 하는 가드. */
   private renderToken = 0
+  /** PM 공개 API가 없을 때 편집 모달을 여는 용도로만 재사용하는 단일 비활성 leaf. */
+  private pmCompatibilityLeaf: WorkspaceLeaf | null = null
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -341,7 +343,7 @@ export class MatrixView extends ItemView {
       return
     }
 
-    const { leaf } = await this.openProjectLeaf(projectPath)
+    const leaf = await this.openProjectLeaf(projectPath)
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const buttons = Array.from(
         leaf.view.containerEl.querySelectorAll<HTMLButtonElement>('.pm-toolbar-right button')
@@ -360,26 +362,28 @@ export class MatrixView extends ItemView {
   private async openProjectLeaf(
     projectPath: string,
     reveal = true
-  ): Promise<{ leaf: WorkspaceLeaf; created: boolean }> {
+  ): Promise<WorkspaceLeaf> {
     const viewType = 'pm-project'
     const existing = this.app.workspace.getLeavesOfType(viewType).find((leaf) => {
       const state = leaf.getViewState().state as { filePath?: unknown } | undefined
       return state?.filePath === projectPath
     })
-    const leaf = existing ?? this.app.workspace.getLeaf('tab')
+    const leaf =
+      existing ?? (!reveal ? this.pmCompatibilityLeaf : null) ?? this.app.workspace.getLeaf('tab')
     if (!existing) {
+      if (!reveal) this.pmCompatibilityLeaf = leaf
       await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: reveal })
     }
     if (reveal) await this.app.workspace.revealLeaf(leaf)
-    return { leaf, created: !existing }
+    return leaf
   }
 
-  /** 공개 API → 현재 DOM → PM 1.8 TableView 편집 동작 → 실제 노트 순서로 폴백한다. */
+  /** 공개 API → 현재 DOM → PM 1.8 TableView 편집 동작 순서로 시도한다. */
   private async openTaskEditorInProjectManager(task: MatrixTask): Promise<void> {
     const projectPath = this.plugin.index.projectFilePath(task.projectId)
     const pmPlugin = this.app.plugins?.getPlugin?.('project-manager')
     if (!projectPath || !pmPlugin) {
-      await this.app.workspace.openLinkText(task.filePath, '', false)
+      new Notice(KO.notice.pmTaskEditorFallback)
       return
     }
 
@@ -394,28 +398,21 @@ export class MatrixView extends ItemView {
     }
 
     // PM 뷰는 편집기를 여는 호환 표면으로만 준비하고 활성 탭은 매트릭스에 둔다.
-    const { leaf, created } = await this.openProjectLeaf(projectPath, false)
-    const cleanupCompatibilityLeaf = (): void => {
-      if (created) window.setTimeout(() => leaf.detach(), 0)
-    }
+    const leaf = await this.openProjectLeaf(projectPath, false)
 
     // setViewState가 프로젝트 로드를 기다리지만, Obsidian/서드파티 leaf 복원기는
     // DOM 연결을 다음 프레임으로 미룰 수 있어 짧게 재시도한다.
     for (let attempt = 0; attempt < 4; attempt += 1) {
       if (this.clickPmTask(task.id, leaf.view.containerEl)) {
-        cleanupCompatibilityLeaf()
         return
       }
       await nextFrame()
     }
 
     if (tryOpenTaskEditorFromProjectView(leaf.view, task.id)) {
-      cleanupCompatibilityLeaf()
       return
     }
 
-    cleanupCompatibilityLeaf()
-    await this.app.workspace.openLinkText(task.filePath, '', false)
     new Notice(KO.notice.pmTaskEditorFallback)
   }
 
