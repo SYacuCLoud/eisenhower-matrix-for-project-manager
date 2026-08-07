@@ -146,15 +146,18 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     }
   }
 
-  if (meta && detailed) {
+  if (detailed) {
+    const details = body.createDiv({ cls: 'eis-card-details' })
     const status = statusLabel(task.status, props.statuses)
-    if (status) meta.createSpan({ cls: 'eis-chip eis-chip--status', text: status })
-    if (task.start) meta.createSpan({ cls: 'eis-chip eis-chip--start', text: KO.card.start(task.start) })
+    if (status) details.createSpan({ cls: 'eis-chip eis-chip--status', text: status })
+    if (task.start) {
+      details.createSpan({ cls: 'eis-chip eis-chip--start', text: KO.card.start(task.start) })
+    }
     for (const assignee of task.assignees.slice(0, 4)) {
-      meta.createSpan({ cls: 'eis-chip eis-chip--assignee', text: `@${assignee}` })
+      details.createSpan({ cls: 'eis-chip eis-chip--assignee', text: `@${assignee}` })
     }
     if (task.progress > 0) {
-      meta.createSpan({ cls: 'eis-chip eis-chip--progress', text: KO.card.progress(task.progress) })
+      details.createSpan({ cls: 'eis-chip eis-chip--progress', text: KO.card.progress(task.progress) })
     }
   }
 
