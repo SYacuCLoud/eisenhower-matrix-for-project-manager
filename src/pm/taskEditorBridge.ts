@@ -15,6 +15,9 @@ interface PmCreateBridge {
   store?: {
     loadProject?: (file: TFile) => Promise<unknown>
   }
+  router?: {
+    openProjectByPath?: (path: string, ...args: unknown[]) => unknown
+  }
   openTaskModalForProject?: (
     project: unknown,
     parentId: string | null,
@@ -26,21 +29,100 @@ interface PmCreateBridge {
 export async function tryOpenNewTaskModal(
   plugin: unknown,
   projectFile: TFile,
-  defaults: NewTaskDefaults
+  defaults: NewTaskDefaults,
+  ownerDocument?: Document
 ): Promise<boolean> {
   if (!plugin || typeof plugin !== 'object') return false
   const bridge = plugin as PmCreateBridge
   if (typeof bridge.store?.loadProject !== 'function') return false
   if (typeof bridge.openTaskModalForProject !== 'function') return false
+  let navigationGuard: NavigationGuard | null = null
   try {
     const project = await bridge.store.loadProject(projectFile)
     if (!project) return false
+    navigationGuard = suppressModalProjectNavigation(
+      bridge,
+      projectPath(project, projectFile.path),
+      ownerDocument
+    )
     bridge.openTaskModalForProject.call(plugin, project, null, defaults)
+    navigationGuard.watchModal()
     return true
   } catch (error) {
+    navigationGuard?.restore()
     console.warn('[EIS] Project Manager 작업 생성 모달을 열지 못했습니다.', error)
     return false
   }
+}
+
+interface NavigationGuard {
+  watchModal: () => void
+  restore: () => void
+}
+
+/** PM 1.8 생성 모달의 저장 콜백이 프로젝트 탭을 강제로 여는 동작만 한 번 막는다. */
+function suppressModalProjectNavigation(
+  bridge: PmCreateBridge,
+  targetPath: string,
+  ownerDocument?: Document
+): NavigationGuard {
+  const router = bridge.router
+  const original = router?.openProjectByPath
+  if (!router || typeof original !== 'function' || !ownerDocument) {
+    return { watchModal: () => undefined, restore: () => undefined }
+  }
+
+  const existingModals = new Set(Array.from(ownerDocument.querySelectorAll('.pm-modal--task')))
+  let modalEl: Element | null = null
+  let observer: MutationObserver | null = null
+  let timer: number | null = null
+  let restored = false
+
+  const restore = (): void => {
+    if (restored) return
+    restored = true
+    if (router.openProjectByPath === guardedOpenProject) router.openProjectByPath = original
+    observer?.disconnect()
+    if (timer !== null) ownerDocument.defaultView?.clearTimeout(timer)
+  }
+  const guardedOpenProject = (path: string, ...args: unknown[]): unknown => {
+    if (path === targetPath) {
+      restore()
+      return Promise.resolve()
+    }
+    return original.call(router, path, ...args)
+  }
+  router.openProjectByPath = guardedOpenProject
+
+  const findModal = (): Element | null =>
+    Array.from(ownerDocument.querySelectorAll('.pm-modal--task')).find(
+      (element) => !existingModals.has(element)
+    ) ?? null
+
+  return {
+    watchModal: () => {
+      modalEl = findModal()
+      const MutationObserverCtor = ownerDocument.defaultView?.MutationObserver
+      if (MutationObserverCtor && ownerDocument.body) {
+        observer = new MutationObserverCtor(() => {
+          modalEl ??= findModal()
+          if (modalEl && !modalEl.isConnected) restore()
+        })
+        observer.observe(ownerDocument.body, { childList: true, subtree: true })
+      }
+      timer = ownerDocument.defaultView?.setTimeout(() => {
+        modalEl ??= findModal()
+        if (!modalEl) restore()
+      }, 0) ?? null
+    },
+    restore
+  }
+}
+
+function projectPath(project: unknown, fallback: string): string {
+  if (!project || typeof project !== 'object') return fallback
+  const path = (project as { filePath?: unknown }).filePath
+  return typeof path === 'string' ? path : fallback
 }
 
 interface PmTaskEditorApi {

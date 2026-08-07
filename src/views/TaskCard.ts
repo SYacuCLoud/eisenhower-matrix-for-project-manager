@@ -88,13 +88,8 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
       text: KO.card.rollupCompleted(task.rolledUpCompletedCount)
     })
   }
-  const hasAttention =
-    !compact &&
-    (task.type === 'milestone' ||
-      props.unavailableReason !== null ||
-      props.urgencyLevel !== 'none' ||
-      props.neglectedAgeDays > 0)
-  const attention = hasAttention ? body.createDiv({ cls: 'eis-card-attention' }) : null
+  // 기본·상세 카드는 배지 유무와 관계없이 두 번째 행을 확보해 높이와 위치를 고정한다.
+  const attention = compact ? null : body.createDiv({ cls: 'eis-card-attention' })
 
   if (attention && task.type === 'milestone') {
     attention.createSpan({ cls: 'eis-badge eis-badge--milestone', text: 'M' })
@@ -134,7 +129,9 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
 
   if (meta && task.due) {
     const rel = relativeDueKo(task.due, props.today)
-    const chip = meta.createSpan({ cls: 'eis-chip eis-chip--due', text: `${task.due} · ${rel.text}` })
+    // 긴급 상태는 바로 위 고정 배지가 이미 설명하므로 날짜 칩에서는 같은 문구를 반복하지 않는다.
+    const dueText = props.urgencyLevel === 'none' ? `${task.due} · ${rel.text}` : task.due
+    const chip = meta.createSpan({ cls: 'eis-chip eis-chip--due', text: dueText })
     chip.addClass(`eis-chip--${rel.tone}`)
   }
 

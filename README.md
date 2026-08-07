@@ -19,7 +19,7 @@ Obsidian의 [Project Manager](https://github.com/StepanKropachev/obsidian-pm)용
 - 긴급 작업의 `기한 초과`·`오늘 마감`·`마감 임박` 단계 표시
 - 오랫동안 수정되지 않은 중요 작업의 방치 위험 탐지
 - 이전 확인 이후 분면·긴급도·실행 상태가 달라진 작업 브리핑
-- 각 분면에서 Project Manager 작업 생성 창을 기본값과 함께 바로 열기
+- 각 분면에서 Project Manager 작업 생성 창을 기본값과 함께 바로 열고 매트릭스에서 저장
 - 간결·기본·상세 카드 밀도 전환
 
 ## 요구 사항

@@ -61,7 +61,80 @@ describe('Project Manager 작업 생성 호환 경로', () => {
   it('필요한 capability가 없으면 호출하지 않는다', async () => {
     expect(await tryOpenNewTaskModal({}, {} as TFile, { due: '', priority: 'low' })).toBe(false)
   })
+
+  it('생성 작업 저장 뒤 Project Manager 프로젝트 화면으로 이동하지 않는다', async () => {
+    const project = { id: 'project-1', filePath: 'Projects/demo.md' }
+    const file = { path: project.filePath } as TFile
+    const originalOpenProject = vi.fn()
+    const modals: Array<{ isConnected: boolean }> = []
+    const ownerDocument = makeModalDocument(modals)
+    const plugin = {
+      store: { loadProject: vi.fn().mockResolvedValue(project) },
+      router: { openProjectByPath: originalOpenProject },
+      openTaskModalForProject: vi.fn(() => modals.push({ isConnected: true }))
+    }
+
+    expect(
+      await tryOpenNewTaskModal(plugin, file, { due: '2026-08-08', priority: 'high' }, ownerDocument)
+    ).toBe(true)
+    expect(plugin.router.openProjectByPath).not.toBe(originalOpenProject)
+
+    await plugin.router.openProjectByPath(project.filePath)
+    expect(originalOpenProject).not.toHaveBeenCalled()
+    expect(plugin.router.openProjectByPath).toBe(originalOpenProject)
+  })
+
+  it('생성 모달을 취소하면 Project Manager 라우터를 원상 복구한다', async () => {
+    const project = { id: 'project-1', filePath: 'Projects/demo.md' }
+    const file = { path: project.filePath } as TFile
+    const originalOpenProject = vi.fn()
+    const modals: Array<{ isConnected: boolean }> = []
+    const modalDocument = makeModalDocument(modals)
+    const plugin = {
+      store: { loadProject: vi.fn().mockResolvedValue(project) },
+      router: { openProjectByPath: originalOpenProject },
+      openTaskModalForProject: vi.fn(() => modals.push({ isConnected: true }))
+    }
+
+    await tryOpenNewTaskModal(
+      plugin,
+      file,
+      { due: '2026-08-08', priority: 'high' },
+      modalDocument.document
+    )
+    modals[0]!.isConnected = false
+    modalDocument.notifyMutation()
+
+    expect(plugin.router.openProjectByPath).toBe(originalOpenProject)
+  })
 })
+
+function makeModalDocument(modals: Array<{ isConnected: boolean }>): Document & {
+  document: Document
+  notifyMutation: () => void
+} {
+  let mutationCallback = (): void => undefined
+  class FakeMutationObserver {
+    constructor(callback: () => void) {
+      mutationCallback = callback
+    }
+    observe(): void {}
+    disconnect(): void {}
+  }
+  const document = {
+    body: {},
+    querySelectorAll: () => modals.filter((modal) => modal.isConnected),
+    defaultView: {
+      MutationObserver: FakeMutationObserver,
+      setTimeout: () => 1,
+      clearTimeout: () => undefined
+    }
+  } as unknown as Document
+  return Object.assign(document, {
+    document,
+    notifyMutation: () => mutationCallback()
+  })
+}
 
 describe('Project Manager 1.8 TableView 호환 경로', () => {
   it('필터와 뷰를 잠시 전환해 선택 작업에 Enter를 보내고 원상 복구한다', () => {

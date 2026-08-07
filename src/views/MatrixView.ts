@@ -337,9 +337,11 @@ export class MatrixView extends ItemView {
       notUrgentPaddingDays: settings.notUrgentPaddingDays,
       importantThresholdId: settings.importantThresholdId
     })
-    if (await tryOpenNewTaskModal(pmPlugin, projectFile, defaults)) return
+    if (await tryOpenNewTaskModal(pmPlugin, projectFile, defaults, this.containerEl.ownerDocument)) {
+      return
+    }
 
-    const leaf = await this.openProjectLeaf(projectPath)
+    const { leaf } = await this.openProjectLeaf(projectPath)
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const buttons = Array.from(
         leaf.view.containerEl.querySelectorAll<HTMLButtonElement>('.pm-toolbar-right button')
@@ -355,7 +357,10 @@ export class MatrixView extends ItemView {
     new Notice(KO.notice.createTaskFallback)
   }
 
-  private async openProjectLeaf(projectPath: string, reveal = true): Promise<WorkspaceLeaf> {
+  private async openProjectLeaf(
+    projectPath: string,
+    reveal = true
+  ): Promise<{ leaf: WorkspaceLeaf; created: boolean }> {
     const viewType = 'pm-project'
     const existing = this.app.workspace.getLeavesOfType(viewType).find((leaf) => {
       const state = leaf.getViewState().state as { filePath?: unknown } | undefined
@@ -366,7 +371,7 @@ export class MatrixView extends ItemView {
       await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: reveal })
     }
     if (reveal) await this.app.workspace.revealLeaf(leaf)
-    return leaf
+    return { leaf, created: !existing }
   }
 
   /** 공개 API → 현재 DOM → PM 1.8 TableView 편집 동작 → 실제 노트 순서로 폴백한다. */
@@ -389,17 +394,27 @@ export class MatrixView extends ItemView {
     }
 
     // PM 뷰는 편집기를 여는 호환 표면으로만 준비하고 활성 탭은 매트릭스에 둔다.
-    const leaf = await this.openProjectLeaf(projectPath, false)
+    const { leaf, created } = await this.openProjectLeaf(projectPath, false)
+    const cleanupCompatibilityLeaf = (): void => {
+      if (created) window.setTimeout(() => leaf.detach(), 0)
+    }
 
     // setViewState가 프로젝트 로드를 기다리지만, Obsidian/서드파티 leaf 복원기는
     // DOM 연결을 다음 프레임으로 미룰 수 있어 짧게 재시도한다.
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      if (this.clickPmTask(task.id, leaf.view.containerEl)) return
+      if (this.clickPmTask(task.id, leaf.view.containerEl)) {
+        cleanupCompatibilityLeaf()
+        return
+      }
       await nextFrame()
     }
 
-    if (tryOpenTaskEditorFromProjectView(leaf.view, task.id)) return
+    if (tryOpenTaskEditorFromProjectView(leaf.view, task.id)) {
+      cleanupCompatibilityLeaf()
+      return
+    }
 
+    cleanupCompatibilityLeaf()
     await this.app.workspace.openLinkText(task.filePath, '', false)
     new Notice(KO.notice.pmTaskEditorFallback)
   }
