@@ -32,7 +32,7 @@ export class MatrixView extends ItemView {
   private renderToken = 0
   /** PM 공개 API가 없을 때 편집 모달을 여는 용도로만 재사용하는 단일 비활성 leaf. */
   private pmCompatibilityLeaf: WorkspaceLeaf | null = null
-  private transitionNotice: Notice | null = null
+  private transitionNotice: HTMLElement | null = null
   private transitionNoticeKey = ''
 
   constructor(
@@ -468,17 +468,18 @@ export class MatrixView extends ItemView {
       return
     }
     const key = items.map((item) => `${item.filePath}:${item.detectedAt}`).join('|')
-    if (this.transitionNotice && this.transitionNoticeKey === key) return
+    if (this.transitionNotice?.isConnected && this.transitionNoticeKey === key) return
     this.hideTransitionToast()
 
-    const notice = new Notice('', 0)
-    this.transitionNotice = notice
+    const doc = this.contentEl.ownerDocument
+    doc.querySelector('.eis-transition-toast-shell')?.remove()
+    const toast = doc.body.createDiv({ cls: 'eis-transition-toast-shell' })
+    toast.setAttribute('role', 'status')
+    toast.setAttribute('aria-live', 'polite')
+    this.transitionNotice = toast
     this.transitionNoticeKey = key
-    notice.noticeEl.addClass('eis-transition-notice')
-    notice.messageEl.empty()
-    notice.messageEl.addClass('eis-transition-toast')
 
-    const header = notice.messageEl.createDiv({ cls: 'eis-transition-toast-header' })
+    const header = toast.createDiv({ cls: 'eis-transition-toast-header' })
     header.createDiv({ cls: 'eis-transition-toast-title', text: KO.briefing.title(items.length) })
     const dismiss = header.createEl('button', {
       cls: 'eis-transition-toast-dismiss',
@@ -487,18 +488,20 @@ export class MatrixView extends ItemView {
     dismiss.addEventListener(
       'click',
       safeAsync(async () => {
-        if (this.transitionNotice === notice) {
+        if (this.transitionNotice === toast) {
           this.transitionNotice = null
           this.transitionNoticeKey = ''
         }
-        notice.hide()
+        toast.remove()
         await this.plugin.dismissTransitions()
       })
     )
 
-    const list = notice.messageEl.createDiv({ cls: 'eis-transition-toast-list' })
+    const list = toast.createDiv({ cls: 'eis-transition-toast-list' })
     for (const item of items.slice(0, 3)) {
-      const row = list.createEl('button', { cls: 'eis-transition-toast-item' })
+      const row = list.createDiv({ cls: 'eis-transition-toast-item' })
+      row.setAttribute('role', 'button')
+      row.tabIndex = 0
       row.createSpan({ cls: 'eis-transition-toast-task', text: item.title })
       row.createSpan({
         cls: 'eis-transition-toast-reason',
@@ -512,9 +515,14 @@ export class MatrixView extends ItemView {
         else void this.app.workspace.openLinkText(item.filePath, '', false)
       }
       row.addEventListener('click', open)
+      row.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        open()
+      })
     }
     if (items.length > 3) {
-      notice.messageEl.createDiv({
+      toast.createDiv({
         cls: 'eis-transition-toast-more',
         text: KO.briefing.more(items.length - 3)
       })
@@ -522,7 +530,7 @@ export class MatrixView extends ItemView {
   }
 
   private hideTransitionToast(): void {
-    this.transitionNotice?.hide()
+    this.transitionNotice?.remove()
     this.transitionNotice = null
     this.transitionNoticeKey = ''
   }
