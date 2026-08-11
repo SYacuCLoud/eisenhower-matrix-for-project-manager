@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   classify,
+  canMoveToQuadrant,
   importantIdsForThreshold,
   isImportant,
   isTerminal,
@@ -140,5 +141,62 @@ describe('classify', () => {
   it('지난 마감 + 완료는 절대 do 가 아니다', () => {
     const t = makeMatrixTask({ due: inDays(-10), priority: 'critical', status: 'done' })
     expect(classify(t, ctx)).toBe('plan')
+  })
+})
+
+describe('completed task classification', () => {
+  const ctx = makeCtx({ urgencyWindowDays: 3 })
+
+  it('uses the completion date instead of today for urgency', () => {
+    const completed = inDays(-30)
+    const due = inDays(-20)
+    const task = makeMatrixTask({ status: 'done', completed, due, priority: 'low' })
+
+    expect(isUrgent(task, ctx)).toBe(false)
+    expect(classify(task, ctx)).toBe('drop')
+  })
+
+  it('places urgent unimportant completed work in delegate', () => {
+    const task = makeMatrixTask({
+      status: 'done',
+      completed: inDays(-1),
+      due: inDays(-2),
+      priority: 'low'
+    })
+
+    expect(isUrgent(task, ctx)).toBe(true)
+    expect(classify(task, ctx)).toBe('delegate')
+  })
+
+  it('places urgent important completed work in do', () => {
+    const task = makeMatrixTask({
+      status: 'done',
+      completed: inDays(0),
+      due: inDays(2),
+      priority: 'high'
+    })
+
+    expect(classify(task, ctx)).toBe('do')
+  })
+
+  it('keeps terminal work without a completion date non-urgent', () => {
+    const task = makeMatrixTask({ status: 'done', completed: '', due: inDays(-20), priority: 'low' })
+
+    expect(isUrgent(task, ctx)).toBe(false)
+    expect(classify(task, ctx)).toBe('drop')
+  })
+
+  it('keeps completed historical classification read-only', () => {
+    const task = makeMatrixTask({
+      status: 'done',
+      completed: inDays(0),
+      due: inDays(-1),
+      priority: 'low'
+    })
+
+    expect(classify(task, ctx)).toBe('delegate')
+    expect(['do', 'plan', 'delegate', 'drop'].every((target) =>
+      !canMoveToQuadrant(task, target as 'do' | 'plan' | 'delegate' | 'drop', ctx)
+    )).toBe(true)
   })
 })

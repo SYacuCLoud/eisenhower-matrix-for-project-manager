@@ -134,7 +134,7 @@ export const KO = {
     undoLabel: '되돌리기',
     refreshed: '매트릭스를 새로 읽었습니다.',
     archivedNoDrag: '보관된 작업은 이동할 수 없습니다.',
-    completedNotUrgent: '완료된 작업은 긴급 분면으로 이동할 수 없습니다.',
+    completedNotUrgent: '완료된 작업은 분면을 이동할 수 없습니다.',
     pmTaskEditorFallback: 'Project Manager 작업 편집기를 열지 못했습니다.',
     noProjects: '작업을 추가할 Project Manager 프로젝트가 없습니다.',
     createTaskFallback: '기본값을 미리 채우지 못해 Project Manager의 일반 작업 추가 창을 열었습니다.'

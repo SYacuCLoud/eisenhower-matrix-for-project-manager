@@ -6,7 +6,8 @@ import type { ClassifyContext, MatrixTask, QuadrantId } from './types'
  * 순수 함수만. obsidian 을 import 하지 않는다.
  *
  * 축 정의
- *  - 긴급: 마감일이 있고, 오늘부터 N일 미만 남았거나 이미 지남. 완료 상태는 긴급이 아니다.
+ *  - 긴급: 마감일이 있고, 기준일부터 N일 미만 남았거나 이미 지남.
+ *          진행 중 작업의 기준일은 오늘, 완료 작업의 기준일은 완료일이다.
  *          (PM `utils.ts` 의 `dueUrgency` 와 동일한 `days < N` 규칙)
  *  - 중요: priority 가 팔레트 순서상 임계값 이상.
  */
@@ -23,8 +24,9 @@ export function daysUntilDue(due: string, today: string): number | null {
 }
 
 export function isUrgent(t: MatrixTask, ctx: ClassifyContext): boolean {
-  if (isTerminal(t.status, ctx.statuses)) return false
-  const days = daysUntilDue(t.due, ctx.today)
+  const referenceDate = isTerminal(t.status, ctx.statuses) ? t.completed : ctx.today
+  if (!referenceDate) return false
+  const days = daysUntilDue(t.due, referenceDate)
   if (days === null) return false
   return days < ctx.urgencyWindowDays
 }
@@ -50,13 +52,14 @@ export function isImportantQuadrant(q: QuadrantId): boolean {
   return q === 'do' || q === 'plan'
 }
 
-/** 완료 상태는 정의상 긴급일 수 없으므로 긴급 분면으로 이동할 수 없다. */
+/** 완료 작업의 과거 분류를 보존하기 위해 분면 이동은 허용하지 않는다. */
 export function canMoveToQuadrant(
   task: MatrixTask,
   target: QuadrantId,
   ctx: ClassifyContext
 ): boolean {
-  return !(isTerminal(task.status, ctx.statuses) && isUrgentQuadrant(target))
+  if (isTerminal(task.status, ctx.statuses)) return false
+  return true
 }
 
 /** 팔레트에서의 순위. 배열 index 가 곧 순위(0 = 최상위). 없으면 -1. */
