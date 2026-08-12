@@ -13,11 +13,12 @@ export interface QuadrantProps {
   maxCards: number
   cardProps: (task: MatrixTask) => Omit<
     TaskCardProps,
-    'task' | 'currentQuadrant' | 'onOpen' | 'onOpenNote' | 'onMove'
+    'task' | 'currentQuadrant' | 'onOpen' | 'onOpenNote' | 'onMove' | 'onDelete'
   >
   onOpen: TaskCardProps['onOpen']
   onOpenNote: TaskCardProps['onOpenNote']
   onMove: TaskCardProps['onMove']
+  onDelete: TaskCardProps['onDelete']
   onAdd: (event: MouseEvent, quadrant: QuadrantId) => void
   onDrop: (filePath: string, target: QuadrantId) => void | Promise<void>
 }
@@ -62,7 +63,8 @@ export function renderQuadrant(parent: HTMLElement, props: QuadrantProps): Quadr
         currentQuadrant: props.id,
         onOpen: props.onOpen,
         onOpenNote: props.onOpenNote,
-        onMove: props.onMove
+        onMove: props.onMove,
+        onDelete: props.onDelete
       })
     }
     const hidden = props.tasks.length - shown.length

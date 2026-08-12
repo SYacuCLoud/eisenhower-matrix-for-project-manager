@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   tryOpenNewTaskModal,
+  tryDeleteTask,
   tryOpenTaskEditorApi,
   tryOpenTaskEditorFromProjectView,
   type PmTaskEditorRequest
@@ -12,6 +13,35 @@ const request: PmTaskEditorRequest = {
   taskId: 'task-1',
   taskPath: 'Projects/demo_tasks/task.md'
 }
+
+describe('Project Manager 작업 삭제 호환 경로', () => {
+  it('프로젝트를 로드한 뒤 PM store 삭제를 호출한다', async () => {
+    const project = { id: 'project-1' }
+    const file = { path: 'Projects/demo.md' } as TFile
+    const store = {
+      loadProject: vi.fn().mockResolvedValue(project),
+      deleteTask: vi.fn().mockResolvedValue(undefined)
+    }
+
+    expect(await tryDeleteTask({ store }, file, 'task-1')).toBe(true)
+    expect(store.loadProject).toHaveBeenCalledWith(file)
+    expect(store.deleteTask).toHaveBeenCalledWith(project, 'task-1')
+  })
+
+  it('삭제 기능이 없거나 작업 id가 비어 있으면 아무것도 삭제하지 않는다', async () => {
+    expect(await tryDeleteTask({}, {} as TFile, 'task-1')).toBe(false)
+    expect(await tryDeleteTask({ store: {} }, {} as TFile, '')).toBe(false)
+  })
+
+  it('PM 삭제 중 오류가 발생하면 실패로 반환한다', async () => {
+    const store = {
+      loadProject: vi.fn().mockResolvedValue({ id: 'project-1' }),
+      deleteTask: vi.fn().mockRejectedValue(new Error('failed'))
+    }
+
+    expect(await tryDeleteTask({ store }, {} as TFile, 'task-1')).toBe(false)
+  })
+})
 
 describe('Project Manager 공개 API 연동', () => {
   it('capability가 있는 openTaskEditor API를 우선 호출한다', async () => {

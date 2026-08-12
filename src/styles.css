@@ -588,6 +588,15 @@
   margin-top: 0;
 }
 
+.eis-delete-confirm-lead {
+  margin-top: 0;
+  font-weight: var(--font-medium);
+}
+
+.eis-delete-confirm-warning {
+  color: var(--text-error);
+}
+
 .eis-diff {
   width: 100%;
   border-collapse: collapse;

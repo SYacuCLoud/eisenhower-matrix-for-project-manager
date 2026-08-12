@@ -103,6 +103,7 @@ export const KO = {
     moveTo: '사분면 이동',
     openProject: 'Project Manager 작업 편집기 열기',
     openNote: '실제 노트 열기',
+    deleteTask: '작업 삭제',
     undo: '되돌리기'
   },
 
@@ -126,6 +127,14 @@ export const KO = {
     apply: '적용'
   },
 
+  deleteConfirm: {
+    title: '작업 삭제',
+    body: (taskTitle: string) => `“${taskTitle}” 작업을 삭제하시겠습니까?`,
+    warning: '하위 작업도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.',
+    cancel: '취소',
+    apply: '삭제'
+  },
+
   notice: {
     noChanges: '변경할 내용이 없습니다.',
     sameQuadrant: '같은 사분면입니다.',
@@ -137,7 +146,9 @@ export const KO = {
     completedNotUrgent: '완료된 작업은 분면을 이동할 수 없습니다.',
     pmTaskEditorFallback: 'Project Manager 작업 편집기를 열지 못했습니다.',
     noProjects: '작업을 추가할 Project Manager 프로젝트가 없습니다.',
-    createTaskFallback: '기본값을 미리 채우지 못해 Project Manager의 일반 작업 추가 창을 열었습니다.'
+    createTaskFallback: '기본값을 미리 채우지 못해 Project Manager의 일반 작업 추가 창을 열었습니다.',
+    taskDeleted: (taskTitle: string) => `“${taskTitle}” 작업을 삭제했습니다.`,
+    deleteTaskFailed: 'Project Manager에서 작업을 삭제하지 못했습니다.'
   },
 
   quadrantAction: {

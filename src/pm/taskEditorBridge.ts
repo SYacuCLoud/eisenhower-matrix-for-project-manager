@@ -25,6 +25,38 @@ interface PmCreateBridge {
   ) => void
 }
 
+interface PmDeleteBridge {
+  store?: {
+    loadProject?: (file: TFile) => Promise<unknown>
+    deleteTask?: (project: unknown, taskId: string) => Promise<unknown>
+  }
+}
+
+/** PM 1.8.x store를 통해 작업 파일과 프로젝트/부모 관계를 함께 정리한다. */
+export async function tryDeleteTask(
+  plugin: unknown,
+  projectFile: TFile,
+  taskId: string
+): Promise<boolean> {
+  if (!plugin || typeof plugin !== 'object' || !taskId) return false
+  const bridge = plugin as PmDeleteBridge
+  if (
+    typeof bridge.store?.loadProject !== 'function' ||
+    typeof bridge.store.deleteTask !== 'function'
+  ) {
+    return false
+  }
+  try {
+    const project = await bridge.store.loadProject(projectFile)
+    if (!project) return false
+    await bridge.store.deleteTask(project, taskId)
+    return true
+  } catch (error) {
+    console.warn('[EIS] Project Manager 작업 삭제에 실패했습니다.', error)
+    return false
+  }
+}
+
 /** PM 1.8.x 내부 capability. 존재 여부를 확인하고 실패 시 false로 안전하게 폴백한다. */
 export async function tryOpenNewTaskModal(
   plugin: unknown,

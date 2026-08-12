@@ -29,6 +29,7 @@ export interface TaskCardProps {
   /** 우클릭 메뉴에서 실제 Markdown 작업 노트를 연다. */
   onOpenNote: (task: MatrixTask) => void
   onMove: (task: MatrixTask, target: QuadrantId) => void
+  onDelete: (task: MatrixTask) => void
 }
 
 export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLElement {
@@ -208,6 +209,14 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
         .setTitle(KO.menu.openNote)
         .setIcon('file-text')
         .onClick(() => props.onOpenNote(task))
+    )
+    menu.addSeparator()
+    menu.addItem((item) =>
+      item
+        .setTitle(KO.menu.deleteTask)
+        .setIcon('trash-2')
+        .setWarning(true)
+        .onClick(() => props.onDelete(task))
     )
     return menu
   }

@@ -4,6 +4,7 @@ import { canMoveToQuadrant, classify, importantIdsForThreshold } from '../model/
 import { neglectInfo, taskAvailability, urgencyLevel } from '../model/attention'
 import { todayString } from '../model/dates'
 import { defaultsForQuadrant } from '../model/createTask'
+import { DeleteTaskModal } from '../modals/DeleteTaskModal'
 import {
   applyMatrixFilter,
   isDefaultFilter,
@@ -12,9 +13,11 @@ import {
   type FilterContext
 } from '../model/filter'
 import { sortCards } from '../model/sort'
+import { taskFamilyPaths } from '../model/taskRelations'
 import { QUADRANT_ORDER, type ClassifyContext, type MatrixTask, type QuadrantId } from '../model/types'
 import { readPmPalettes } from '../pm/bridge'
 import {
+  tryDeleteTask,
   tryOpenTaskEditorApi,
   tryOpenNewTaskModal,
   tryOpenTaskEditorFromProjectView
@@ -220,7 +223,8 @@ export class MatrixView extends ItemView {
             onOpenNote: (item) => void this.app.workspace.openLinkText(item.filePath, '', false),
             onMove: safeAsync(async (item, target) => {
               await this.plugin.requestMove(item, target)
-            })
+            }),
+            onDelete: (item) => this.confirmDeleteTask(item)
           })
         }
       }
@@ -254,6 +258,7 @@ export class MatrixView extends ItemView {
         onMove: safeAsync(async (task: MatrixTask, target: QuadrantId) => {
           await this.plugin.requestMove(task, target)
         }),
+        onDelete: (task) => this.confirmDeleteTask(task),
         onAdd: (event, quadrant) => this.chooseProjectForNewTask(event, quadrant, ctx),
         onDrop: safeAsync(async (filePath: string, target: QuadrantId) => {
           const task = this.plugin.index.get(filePath)
@@ -292,6 +297,38 @@ export class MatrixView extends ItemView {
   private parentTitle(task: MatrixTask): string {
     if (!task.parentId) return ''
     return this.plugin.index.all().find((t) => t.id === task.parentId)?.title ?? ''
+  }
+
+  private confirmDeleteTask(task: MatrixTask): void {
+    new DeleteTaskModal(this.app, {
+      task,
+      onConfirm: safeAsync(async () => this.deleteTask(task))
+    }).open()
+  }
+
+  private async deleteTask(task: MatrixTask): Promise<void> {
+    const projectPath = this.plugin.index.projectFilePath(task.projectId)
+    const projectFile = this.app.vault.getAbstractFileByPath(projectPath)
+    const pmPlugin = this.app.plugins?.getPlugin?.('project-manager')
+    if (!(projectFile instanceof TFile) || !pmPlugin || !task.id) {
+      new Notice(KO.notice.deleteTaskFailed)
+      return
+    }
+
+    const deletedPaths = taskFamilyPaths(this.plugin.index.all(), task)
+    if (!(await tryDeleteTask(pmPlugin, projectFile, task.id))) {
+      new Notice(KO.notice.deleteTaskFailed)
+      return
+    }
+
+    for (const path of deletedPaths) delete this.plugin.settings.transitionSnapshot[path]
+    this.plugin.settings.pendingTransitions = this.plugin.settings.pendingTransitions.filter(
+      (item) => !deletedPaths.has(item.filePath)
+    )
+    await this.plugin.saveSettings()
+    this.plugin.index.rebuild()
+    this.plugin.refreshMatrixViews()
+    new Notice(KO.notice.taskDeleted(task.title))
   }
 
   private chooseProjectForNewTask(
