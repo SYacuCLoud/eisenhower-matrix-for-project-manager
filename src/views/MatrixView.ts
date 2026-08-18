@@ -17,6 +17,7 @@ import { taskFamilyPaths } from '../model/taskRelations'
 import { QUADRANT_ORDER, type ClassifyContext, type MatrixTask, type QuadrantId } from '../model/types'
 import { readPmPalettes } from '../pm/bridge'
 import {
+  ensureProjectViewTask,
   tryDeleteTask,
   tryOpenTaskEditorApi,
   tryOpenNewTaskModal,
@@ -456,6 +457,16 @@ export class MatrixView extends ItemView {
 
     if (tryOpenTaskEditorFromProjectView(leaf.view, task.id)) {
       return
+    }
+
+    // 새 작업 직후에는 백그라운드 PM 탭과 store 캐시가 이전 작업 트리를
+    // 유지할 수 있다. 작업이 없을 때만 갱신한 뒤 동일한 안전 경로를 재시도한다.
+    if (await ensureProjectViewTask(pmPlugin, leaf.view, projectPath, task.id)) {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        if (this.clickPmTask(task.id, leaf.view.containerEl)) return
+        await nextFrame()
+      }
+      if (tryOpenTaskEditorFromProjectView(leaf.view, task.id)) return
     }
 
     new Notice(KO.notice.pmTaskEditorFallback)

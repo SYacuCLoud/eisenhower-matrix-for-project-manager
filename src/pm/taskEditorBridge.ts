@@ -29,6 +29,7 @@ interface PmDeleteBridge {
   store?: {
     loadProject?: (file: TFile) => Promise<unknown>
     deleteTask?: (project: unknown, taskId: string) => Promise<unknown>
+    invalidateForPath?: (path: string) => void
   }
 }
 
@@ -47,10 +48,17 @@ export async function tryDeleteTask(
     return false
   }
   try {
-    const project = await bridge.store.loadProject(projectFile)
+    let project = await bridge.store.loadProject(projectFile)
+    if (!projectHasTask(project, taskId) && typeof bridge.store.invalidateForPath === 'function') {
+      bridge.store.invalidateForPath(projectFile.path)
+      project = await bridge.store.loadProject(projectFile)
+    }
     if (!project) return false
+    // PM의 캐시가 오래된 경우 deleteTask는 대상을 찾지 못해도 예외 없이 끝난다.
+    // 실제 작업을 확인한 경우에만 삭제를 호출해 거짓 성공을 막는다.
+    if (!projectHasTask(project, taskId)) return false
     await bridge.store.deleteTask(project, taskId)
-    return true
+    return !projectHasTask(project, taskId)
   } catch (error) {
     console.warn('[EIS] Project Manager 작업 삭제에 실패했습니다.', error)
     return false
@@ -208,6 +216,36 @@ interface PmProjectViewCompat {
   project?: { tasks?: unknown; taskIndex?: unknown } | null
   subview?: PmTableSubviewCompat | null
   renderCurrentView?: () => void
+  loadProject?: () => Promise<void>
+}
+
+interface PmProjectRefreshBridge {
+  store?: {
+    invalidateForPath?: (path: string) => void
+  }
+}
+
+/** 오래된 백그라운드 PM 뷰가 새 작업을 모를 때에만 캐시와 뷰를 다시 불러온다. */
+export async function ensureProjectViewTask(
+  plugin: unknown,
+  rawView: unknown,
+  projectPath: string,
+  taskId: string
+): Promise<boolean> {
+  if (!rawView || typeof rawView !== 'object' || !taskId) return false
+  const view = rawView as PmProjectViewCompat
+  if (projectHasTask(view.project, taskId)) return true
+  if (typeof view.loadProject !== 'function') return false
+
+  try {
+    const bridge = plugin as PmProjectRefreshBridge | null
+    bridge?.store?.invalidateForPath?.(projectPath)
+    await view.loadProject.call(view)
+    return projectHasTask(view.project, taskId)
+  } catch (error) {
+    console.warn('[EIS] Project Manager 프로젝트 뷰 갱신에 실패했습니다.', error)
+    return false
+  }
 }
 
 /**
@@ -260,11 +298,12 @@ export function tryOpenTaskEditorFromProjectView(
   }
 }
 
-function projectHasTask(project: PmProjectViewCompat['project'], taskId: string): boolean {
-  if (!project) return false
-  if (project.taskIndex instanceof Map && project.taskIndex.has(taskId)) return true
-  if (!Array.isArray(project.tasks)) return false
-  const pending = [...project.tasks]
+function projectHasTask(project: unknown, taskId: string): boolean {
+  if (!project || typeof project !== 'object') return false
+  const candidate = project as NonNullable<PmProjectViewCompat['project']>
+  if (candidate.taskIndex instanceof Map && candidate.taskIndex.has(taskId)) return true
+  if (!Array.isArray(candidate.tasks)) return false
+  const pending = [...candidate.tasks]
   const seen = new Set<unknown>()
   while (pending.length > 0) {
     const value = pending.pop()

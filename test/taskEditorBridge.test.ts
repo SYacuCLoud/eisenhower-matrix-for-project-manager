@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  ensureProjectViewTask,
   tryOpenNewTaskModal,
   tryDeleteTask,
   tryOpenTaskEditorApi,
@@ -16,16 +17,44 @@ const request: PmTaskEditorRequest = {
 
 describe('Project Manager 작업 삭제 호환 경로', () => {
   it('프로젝트를 로드한 뒤 PM store 삭제를 호출한다', async () => {
-    const project = { id: 'project-1' }
+    const project = {
+      id: 'project-1',
+      tasks: [{ id: 'task-1', subtasks: [] }],
+      taskIndex: new Map([['task-1', { task: { id: 'task-1' }, parentId: null }]])
+    }
     const file = { path: 'Projects/demo.md' } as TFile
     const store = {
       loadProject: vi.fn().mockResolvedValue(project),
-      deleteTask: vi.fn().mockResolvedValue(undefined)
+      deleteTask: vi.fn(async () => {
+        project.tasks = []
+        project.taskIndex.delete('task-1')
+      })
     }
 
     expect(await tryDeleteTask({ store }, file, 'task-1')).toBe(true)
     expect(store.loadProject).toHaveBeenCalledWith(file)
     expect(store.deleteTask).toHaveBeenCalledWith(project, 'task-1')
+  })
+
+  it('오래된 PM 캐시는 무효화하고 다시 로드한 뒤 삭제한다', async () => {
+    const stale = { tasks: [], taskIndex: new Map() }
+    const fresh = {
+      tasks: [{ id: 'task-1', subtasks: [] }],
+      taskIndex: new Map([['task-1', { task: { id: 'task-1' }, parentId: null }]])
+    }
+    const file = { path: 'Projects/demo.md' } as TFile
+    const store = {
+      loadProject: vi.fn().mockResolvedValueOnce(stale).mockResolvedValueOnce(fresh),
+      invalidateForPath: vi.fn(),
+      deleteTask: vi.fn(async () => {
+        fresh.tasks = []
+        fresh.taskIndex.delete('task-1')
+      })
+    }
+
+    expect(await tryDeleteTask({ store }, file, 'task-1')).toBe(true)
+    expect(store.invalidateForPath).toHaveBeenCalledWith(file.path)
+    expect(store.loadProject).toHaveBeenCalledTimes(2)
   })
 
   it('삭제 기능이 없거나 작업 id가 비어 있으면 아무것도 삭제하지 않는다', async () => {
@@ -34,8 +63,12 @@ describe('Project Manager 작업 삭제 호환 경로', () => {
   })
 
   it('PM 삭제 중 오류가 발생하면 실패로 반환한다', async () => {
+    const project = {
+      tasks: [{ id: 'task-1', subtasks: [] }],
+      taskIndex: new Map([['task-1', { task: { id: 'task-1' }, parentId: null }]])
+    }
     const store = {
-      loadProject: vi.fn().mockResolvedValue({ id: 'project-1' }),
+      loadProject: vi.fn().mockResolvedValue(project),
       deleteTask: vi.fn().mockRejectedValue(new Error('failed'))
     }
 
@@ -167,6 +200,29 @@ function makeModalDocument(modals: Array<{ isConnected: boolean }>): Document & 
 }
 
 describe('Project Manager 1.8 TableView 호환 경로', () => {
+  it('백그라운드 뷰가 새 작업을 모르면 캐시와 프로젝트를 다시 로드한다', async () => {
+    const invalidateForPath = vi.fn()
+    const view: Record<string, any> = {
+      project: { tasks: [], taskIndex: new Map() },
+      async loadProject() {
+        this.project = {
+          tasks: [{ id: 'task-1', subtasks: [] }],
+          taskIndex: new Map([['task-1', { task: { id: 'task-1' }, parentId: null }]])
+        }
+      }
+    }
+
+    expect(
+      await ensureProjectViewTask(
+        { store: { invalidateForPath } },
+        view,
+        'Projects/demo.md',
+        'task-1'
+      )
+    ).toBe(true)
+    expect(invalidateForPath).toHaveBeenCalledWith('Projects/demo.md')
+  })
+
   it('필터와 뷰를 잠시 전환해 선택 작업에 Enter를 보내고 원상 복구한다', () => {
     const originalFilter = {
       text: 'needle',

@@ -1,7 +1,7 @@
 {
   "id": "eisenhower-matrix-for-project-manager",
   "name": "Eisenhower Matrix for Project Manager",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "minAppVersion": "1.13.0",
   "description": "Project Manager용 추가 플러그인으로, 작업을 긴급/중요 4사분면에서 정리합니다.",
   "author": "SYacuCLoud",
