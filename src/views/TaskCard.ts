@@ -1,6 +1,7 @@
 import { Menu, Platform } from 'obsidian'
 import { KO } from '../i18n/ko'
-import { relativeDueKo } from '../model/dates'
+import { relativeDueKo, withWeekdayKo } from '../model/dates'
+import { QUICK_DUE_KINDS, quickDueTarget, type QuickDueKind } from '../actions/planDue'
 import type { UnavailableReason, UrgencyLevel } from '../model/attention'
 import { QUADRANT_ORDER, type CardDensity, type MatrixTask, type QuadrantId } from '../model/types'
 import { priorityColor, priorityLabel, statusLabel } from '../pm/bridge'
@@ -29,6 +30,9 @@ export interface TaskCardProps {
   /** 우클릭 메뉴에서 실제 Markdown 작업 노트를 연다. */
   onOpenNote: (task: MatrixTask) => void
   onMove: (task: MatrixTask, target: QuadrantId) => void
+  /** 우클릭 메뉴의 마감일 빠른 조정. 완료·보관 작업에는 표시하지 않는다. */
+  canAdjustDue: boolean
+  onAdjustDue: (task: MatrixTask, kind: QuickDueKind) => void
   onDelete: (task: MatrixTask) => void
 }
 
@@ -100,7 +104,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   } else if (attention && props.unavailableReason === 'future-start') {
     attention.createSpan({
       cls: 'eis-badge eis-badge--future',
-      text: KO.card.futureStart(task.start)
+      text: KO.card.futureStart(withWeekdayKo(task.start))
     })
   }
   if (attention && props.urgencyLevel !== 'none') {
@@ -131,7 +135,8 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   if (meta && task.due) {
     const rel = relativeDueKo(task.due, props.today)
     // 긴급 상태는 바로 위 고정 배지가 이미 설명하므로 날짜 칩에서는 같은 문구를 반복하지 않는다.
-    const dueText = props.urgencyLevel === 'none' ? `${task.due} · ${rel.text}` : task.due
+    const dueDate = withWeekdayKo(task.due)
+    const dueText = props.urgencyLevel === 'none' ? `${dueDate} · ${rel.text}` : dueDate
     const chip = meta.createSpan({ cls: 'eis-chip eis-chip--due', text: dueText })
     chip.addClass(`eis-chip--${rel.tone}`)
   }
@@ -157,7 +162,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     const status = statusLabel(task.status, props.statuses)
     if (status) details.createSpan({ cls: 'eis-chip eis-chip--status', text: status })
     if (task.start) {
-      details.createSpan({ cls: 'eis-chip eis-chip--start', text: KO.card.start(task.start) })
+      details.createSpan({ cls: 'eis-chip eis-chip--start', text: KO.card.start(withWeekdayKo(task.start)) })
     }
     if (task.progress > 0) {
       details.createSpan({ cls: 'eis-chip eis-chip--progress', text: KO.card.progress(task.progress) })
@@ -198,6 +203,21 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
       }
     }
     if (hasMoveItem) menu.addSeparator()
+    if (props.canAdjustDue && !task.archived) {
+      for (const kind of QUICK_DUE_KINDS) {
+        if (kind === 'clear' && !task.due) continue
+        const target = quickDueTarget(kind, task, props.today)
+        if (kind !== 'clear' && (!target || target === task.due)) continue
+        const label = KO.menu.dueQuick[kind]
+        menu.addItem((item) =>
+          item
+            .setTitle(target ? `${label} · ${withWeekdayKo(target)}` : label)
+            .setIcon(kind === 'clear' ? 'calendar-x' : 'calendar')
+            .onClick(() => props.onAdjustDue(task, kind))
+        )
+      }
+      menu.addSeparator()
+    }
     menu.addItem((item) =>
       item
         .setTitle(KO.menu.openProject)

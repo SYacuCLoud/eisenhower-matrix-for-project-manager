@@ -72,6 +72,30 @@ export function addDays(base: string, n: number): string {
   return new Date(ms + n * MS_PER_DAY).toISOString().slice(0, 10)
 }
 
+const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'] as const
+
+/** 'YYYY-MM-DD' 의 한국어 요일 한 글자('월'…'일'). 입력이 잘못되면 ''. */
+export function weekdayKo(date: string): string {
+  const ms = parseDate(date)
+  if (ms === null) return ''
+  return WEEKDAY_KO[new Date(ms).getUTCDay()] ?? ''
+}
+
+/** '2026-08-07 (금)' 형태. 요일을 알 수 없으면 원문 그대로. */
+export function withWeekdayKo(date: string): string {
+  const w = weekdayKo(date)
+  return w ? `${date} (${w})` : date
+}
+
+/** today 보다 뒤에 오는 첫 월요일. 오늘이 월요일이면 다음 주 월요일. 입력이 잘못되면 ''. */
+export function nextMonday(today: string): string {
+  const ms = parseDate(today)
+  if (ms === null) return ''
+  const dow = new Date(ms).getUTCDay()
+  const offset = (8 - dow) % 7 || 7
+  return addDays(today, offset)
+}
+
 export type DueTone = 'overdue' | 'today' | 'soon' | 'later' | 'none'
 
 export interface RelativeDue {
@@ -90,9 +114,10 @@ export function relativeDueKo(due: string, today: string): RelativeDue {
   return { text: `${days}일 뒤`, tone: 'later' }
 }
 
-/** '2026-08-08 (내일)' 형태. 값이 없으면 ''. */
+/** 카드 날짜 칩과 같은 '2026-08-08 (토) · 내일' 형태. 값이 없으면 ''. */
 export function formatDueKo(due: string, today: string): string {
   if (!due) return ''
+  const date = withWeekdayKo(due)
   const rel = relativeDueKo(due, today)
-  return rel.text ? `${due} (${rel.text})` : due
+  return rel.text ? `${date} · ${rel.text}` : date
 }

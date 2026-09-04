@@ -146,7 +146,7 @@ function planPriorityChange(
   return { field: 'priority', before: task.priority, after, reason: '중요 기준 아래로 내립니다.' }
 }
 
-function planStartChange(task: MatrixTask, newDue: string): FieldChange | null {
+export function planStartChange(task: MatrixTask, newDue: string): FieldChange | null {
   if (!task.start || !newDue) return null
   const start = parseDate(task.start)
   const due = parseDate(newDue)

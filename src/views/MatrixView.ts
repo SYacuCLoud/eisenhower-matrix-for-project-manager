@@ -1,6 +1,6 @@
 import { ItemView, Menu, Notice, TFile, type WorkspaceLeaf } from 'obsidian'
 import { KO } from '../i18n/ko'
-import { canMoveToQuadrant, classify, importantIdsForThreshold } from '../model/classify'
+import { canMoveToQuadrant, classify, importantIdsForThreshold, isTerminal } from '../model/classify'
 import { neglectInfo, taskAvailability, urgencyLevel } from '../model/attention'
 import { todayString } from '../model/dates'
 import { defaultsForQuadrant } from '../model/createTask'
@@ -23,6 +23,7 @@ import {
   tryOpenNewTaskModal,
   tryOpenTaskEditorFromProjectView
 } from '../pm/taskEditorBridge'
+import type { QuickDueKind } from '../actions/planDue'
 import { safeAsync } from '../utils'
 import { renderQuadrant } from './Quadrant'
 import { renderTaskCard } from './TaskCard'
@@ -219,11 +220,15 @@ export class MatrixView extends ItemView {
             parentTitle: this.parentTitle(task),
             currentQuadrant: classify(task, ctx),
             availableMoveTargets: QUADRANT_ORDER.filter((target) => canMoveToQuadrant(task, target, ctx)),
+            canAdjustDue: !isTerminal(task.status, ctx.statuses),
             ...attentionProps(task),
             onOpen: (item) => void this.openTaskEditorInProjectManager(item),
             onOpenNote: (item) => void this.app.workspace.openLinkText(item.filePath, '', false),
             onMove: safeAsync(async (item, target) => {
               await this.plugin.requestMove(item, target)
+            }),
+            onAdjustDue: safeAsync(async (item, kind) => {
+              await this.plugin.requestDueChange(item, kind)
             }),
             onDelete: (item) => this.confirmDeleteTask(item)
           })
@@ -252,12 +257,16 @@ export class MatrixView extends ItemView {
           availableMoveTargets: QUADRANT_ORDER.filter((target) =>
             canMoveToQuadrant(task, target, ctx)
           ),
+          canAdjustDue: !isTerminal(task.status, ctx.statuses),
           ...attentionProps(task)
         }),
         onOpen: (task) => void this.openTaskEditorInProjectManager(task),
         onOpenNote: (task) => void this.app.workspace.openLinkText(task.filePath, '', false),
         onMove: safeAsync(async (task: MatrixTask, target: QuadrantId) => {
           await this.plugin.requestMove(task, target)
+        }),
+        onAdjustDue: safeAsync(async (task: MatrixTask, kind: QuickDueKind) => {
+          await this.plugin.requestDueChange(task, kind)
         }),
         onDelete: (task) => this.confirmDeleteTask(task),
         onAdd: (event, quadrant) => this.chooseProjectForNewTask(event, quadrant, ctx),

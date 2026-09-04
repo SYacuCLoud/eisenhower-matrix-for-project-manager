@@ -104,7 +104,15 @@ export const KO = {
     openProject: 'Project Manager 작업 편집기 열기',
     openNote: '실제 노트 열기',
     deleteTask: '작업 삭제',
-    undo: '되돌리기'
+    undo: '되돌리기',
+    dueQuick: {
+      today: '마감일: 오늘',
+      tomorrow: '마감일: 내일',
+      plusDay: '마감일: +1일',
+      plusWeek: '마감일: +1주',
+      nextMonday: '마감일: 다음 월요일',
+      clear: '마감일 지우기'
+    }
   },
 
   banner: {
@@ -140,6 +148,8 @@ export const KO = {
     sameQuadrant: '같은 사분면입니다.',
     moved: (taskTitle: string) => `"${taskTitle}" 이동 완료`,
     undone: (taskTitle: string) => `"${taskTitle}" 이동을 되돌렸습니다.`,
+    dueChanged: (taskTitle: string, due: string) =>
+      due ? `"${taskTitle}" 마감일 → ${due}` : `"${taskTitle}" 마감일을 지웠습니다.`,
     undoLabel: '되돌리기',
     refreshed: '매트릭스를 새로 읽었습니다.',
     archivedNoDrag: '보관된 작업은 이동할 수 없습니다.',

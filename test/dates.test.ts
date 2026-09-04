@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, diffDays, formatDueKo, normalizeDateField, parseDate, relativeDueKo } from '../src/model/dates'
+import {
+  addDays,
+  diffDays,
+  formatDueKo,
+  normalizeDateField,
+  parseDate,
+  relativeDueKo,
+  weekdayKo,
+  withWeekdayKo
+} from '../src/model/dates'
 
 describe('parseDate', () => {
   it('정상 날짜를 파싱한다', () => {
@@ -71,7 +80,25 @@ describe('relativeDueKo', () => {
   })
 
   it('formatDueKo 는 날짜와 상대 표현을 함께 낸다', () => {
-    expect(formatDueKo('2026-08-08', today)).toBe('2026-08-08 (내일)')
+    expect(formatDueKo('2026-08-08', today)).toBe('2026-08-08 (토) · 내일')
     expect(formatDueKo('', today)).toBe('')
+  })
+})
+
+describe('weekdayKo / withWeekdayKo', () => {
+  it('요일을 한국어 한 글자로 낸다', () => {
+    expect(weekdayKo('2026-09-04')).toBe('금')
+    expect(weekdayKo('2026-09-06')).toBe('일')
+    expect(weekdayKo('2026-09-07')).toBe('월')
+  })
+
+  it('잘못된 날짜는 빈 문자열 / 원문 그대로', () => {
+    expect(weekdayKo('')).toBe('')
+    expect(weekdayKo('2026-02-31')).toBe('')
+    expect(withWeekdayKo('not-a-date')).toBe('not-a-date')
+  })
+
+  it('withWeekdayKo 는 날짜 뒤에 (요일) 을 붙인다', () => {
+    expect(withWeekdayKo('2026-09-04')).toBe('2026-09-04 (금)')
   })
 })

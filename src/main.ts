@@ -1,11 +1,12 @@
 import { MarkdownView, Menu, Notice, Plugin, type WorkspaceLeaf } from 'obsidian'
 import { applyQuadrantMove, type MoveResult } from './actions/applyMove'
+import { planDueSet, quickDueTarget, type QuickDueKind } from './actions/planDue'
 import { invertPlan, planQuadrantMove, type MoveOptions } from './actions/planMove'
 import { MatrixIndex } from './index/TaskIndex'
 import { registerIndexSync } from './index/vaultSync'
 import { KO } from './i18n/ko'
-import { canMoveToQuadrant, classify, importantIdsForThreshold } from './model/classify'
-import { todayString } from './model/dates'
+import { canMoveToQuadrant, classify, importantIdsForThreshold, isTerminal } from './model/classify'
+import { todayString, withWeekdayKo } from './model/dates'
 import { mergePendingTransitions, scanTaskTransitions } from './model/transitions'
 import { QUADRANT_ORDER, type ClassifyContext, type MatrixTask, type QuadrantId, type QuadrantWritePlan } from './model/types'
 import { MoveConfirmModal } from './modals/MoveConfirmModal'
@@ -219,7 +220,23 @@ export default class EisenhowerPlugin extends Plugin {
     }).open()
   }
 
-  private async commitMove(plan: QuadrantWritePlan): Promise<void> {
+  /** 카드 메뉴의 마감일 빠른 조정 — 확인창 없이 적용하고 되돌리기만 안내한다. */
+  async requestDueChange(task: MatrixTask, kind: QuickDueKind): Promise<void> {
+    const { ctx } = this.buildContext()
+    if (isTerminal(task.status, ctx.statuses)) {
+      new Notice(KO.notice.completedNotUrgent)
+      return
+    }
+    const target = quickDueTarget(kind, task, ctx.today)
+    const plan = planDueSet(task, target, ctx, { keepStartBeforeDue: this.settings.keepStartBeforeDue })
+    if (plan.changes.length === 0) {
+      new Notice(KO.notice.noChanges)
+      return
+    }
+    await this.commitMove(plan, KO.notice.dueChanged(task.title, target ? withWeekdayKo(target) : ''))
+  }
+
+  private async commitMove(plan: QuadrantWritePlan, message = KO.notice.moved(plan.title)): Promise<void> {
     const result = await applyQuadrantMove(this.app, plan)
     if (!result.ok) {
       this.reportFailure(result)
@@ -232,7 +249,7 @@ export default class EisenhowerPlugin extends Plugin {
     if (!this.index.applyPlan(plan)) this.index.rebuild()
     await this.scanTransitions(false)
     this.refreshMatrixViews()
-    this.showUndoNotice(KO.notice.moved(plan.title))
+    this.showUndoNotice(message)
   }
 
   async undoLastMove(): Promise<void> {

@@ -13,11 +13,12 @@ export interface QuadrantProps {
   maxCards: number
   cardProps: (task: MatrixTask) => Omit<
     TaskCardProps,
-    'task' | 'currentQuadrant' | 'onOpen' | 'onOpenNote' | 'onMove' | 'onDelete'
+    'task' | 'currentQuadrant' | 'onOpen' | 'onOpenNote' | 'onMove' | 'onAdjustDue' | 'onDelete'
   >
   onOpen: TaskCardProps['onOpen']
   onOpenNote: TaskCardProps['onOpenNote']
   onMove: TaskCardProps['onMove']
+  onAdjustDue: TaskCardProps['onAdjustDue']
   onDelete: TaskCardProps['onDelete']
   onAdd: (event: MouseEvent, quadrant: QuadrantId) => void
   onDrop: (filePath: string, target: QuadrantId) => void | Promise<void>
@@ -64,6 +65,7 @@ export function renderQuadrant(parent: HTMLElement, props: QuadrantProps): Quadr
         onOpen: props.onOpen,
         onOpenNote: props.onOpenNote,
         onMove: props.onMove,
+        onAdjustDue: props.onAdjustDue,
         onDelete: props.onDelete
       })
     }
