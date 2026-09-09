@@ -14,12 +14,14 @@ export interface PmPalettes {
   priorities: PriorityConfig[]
   projectsFolder: string
   source: 'pm' | 'fallback'
+  /** dotpm `manifest.version`. 없으면 ''. 표시 용도로만 쓴다. */
+  pluginVersion: string
 }
 
 let warned = false
 
 /**
- * PM 의 팔레트를 읽는다. PM 은 공개 API 도, 설정 변경 이벤트도 없으므로
+ * dotpm(구 Project Manager) 의 팔레트를 읽는다. dotpm 은 공개 API 도, 설정 변경 이벤트도 없으므로
  *  - 전 구간 옵셔널 체이닝 + 타입 가드로 방어하고
  *  - 캐싱하지 않는다 (맵 조회 1회 수준이고, 캐시는 즉시 낡는다).
  */
@@ -29,8 +31,9 @@ export function readPmPalettes(app: App): PmPalettes {
     | Record<string, unknown>
     | undefined
 
+  const version = readVersion(plugin)
   if (!settings) {
-    return fallback(false)
+    return fallback(false, version)
   }
 
   const statuses = isStatusArray(settings['statuses']) ? settings['statuses'].map(copyStatus) : null
@@ -41,9 +44,9 @@ export function readPmPalettes(app: App): PmPalettes {
   if (!statuses || !priorities) {
     if (!warned) {
       warned = true
-      console.warn('[EIS] Project Manager 설정 형태를 인식하지 못해 기본 팔레트를 사용합니다.')
+      console.warn('[EIS] dotpm 설정 형태를 인식하지 못해 기본 팔레트를 사용합니다.')
     }
-    return fallback(true)
+    return fallback(true, version)
   }
 
   const folder = settings['projectsFolder']
@@ -52,13 +55,20 @@ export function readPmPalettes(app: App): PmPalettes {
     statuses,
     priorities,
     projectsFolder: typeof folder === 'string' && folder ? folder : 'Projects',
-    source: 'pm'
+    source: 'pm',
+    pluginVersion: version
   }
 }
 
-function fallback(pmPresent: boolean): PmPalettes {
+function readVersion(plugin: unknown): string {
+  const version = (plugin as { manifest?: { version?: unknown } } | null)?.manifest?.version
+  return typeof version === 'string' ? version : ''
+}
+
+function fallback(pmPresent: boolean, pluginVersion = ''): PmPalettes {
   return {
     available: pmPresent,
+    pluginVersion,
     statuses: FALLBACK_STATUSES.map(copyStatus),
     priorities: FALLBACK_PRIORITIES.map(copyPriority),
     projectsFolder: 'Projects',

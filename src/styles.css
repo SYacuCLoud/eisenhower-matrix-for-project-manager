@@ -360,16 +360,39 @@
   text-align: center;
 }
 
+/*
+ * 분면 내부는 가용 너비에 따라 1열↔2열(이상)로 바뀌는 카드 그리드다.
+ * auto-fill 은 빈 트랙을 유지하므로 카드가 하나뿐이어도 한 칸 너비를 지킨다.
+ * min(…, 100%) 은 분면이 카드 최소 너비보다 좁을 때의 가로 넘침을 막는다.
+ */
 .eis-cards {
-  display: flex;
+  --eis-card-min-width: 300px;
+  --eis-card-min-height: 7.5rem;
+  display: grid;
   flex: 1 1 auto;
-  flex-direction: column;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--eis-card-min-width), 100%), 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  align-items: stretch;
   gap: var(--size-4-2);
   min-height: 0;
   padding: var(--size-4-2);
   overflow-y: auto;
   overscroll-behavior: contain;
   transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.eis-cards > .eis-card {
+  min-height: var(--eis-card-min-height);
+}
+
+.eis-cards > .eis-card--compact {
+  min-height: auto;
+}
+
+.eis-cards > .eis-empty,
+.eis-cards > .eis-more {
+  grid-column: 1 / -1;
 }
 
 .eis-cards.eis-drop-target {
@@ -385,7 +408,7 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
   background: var(--background-primary);
-  box-shadow: var(--shadow-s);
+  box-shadow: none;
   cursor: pointer;
   user-select: none;
 }
@@ -393,6 +416,7 @@
 .eis-card:hover {
   border-color: var(--background-modifier-border-hover);
   background: var(--background-primary-alt);
+  box-shadow: var(--shadow-s);
 }
 
 .eis-card:focus-visible,
@@ -427,8 +451,31 @@
 }
 
 .eis-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   min-width: 0;
-  padding: var(--size-4-2) var(--size-4-3);
+  padding: var(--size-2-3) var(--size-4-3);
+}
+
+.eis-card-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-2-2);
+  min-height: 1.25rem;
+  margin-bottom: 0;
+}
+
+.eis-card-project {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .eis-card--compact .eis-card-body {
@@ -440,7 +487,7 @@
 }
 
 .eis-card-parent {
-  margin-bottom: var(--size-2-1);
+  margin-bottom: 0;
   overflow: hidden;
   color: var(--text-faint);
   font-size: var(--font-ui-smaller);
@@ -450,9 +497,16 @@
 
 .eis-card-title-row {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
+  align-content: center;
   gap: var(--size-2-2);
+  padding-block: 0.125rem;
+}
+
+.eis-card--compact .eis-card-title-row {
+  padding-block: 0;
 }
 
 .eis-card-title {
@@ -465,17 +519,25 @@
 
 .eis-card-meta {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   gap: var(--size-2-1);
-  margin-top: var(--size-4-2);
+  margin-top: var(--size-2-1);
+}
+
+.eis-card-meta:empty {
+  display: none;
 }
 
 .eis-card-attention {
   display: flex;
-  min-height: 1.4rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 1.25rem;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--size-2-1);
-  margin-top: var(--size-2-1);
 }
 
 .eis-card-details {
@@ -678,3 +740,29 @@
     transition: none;
   }
 }
+
+/* Milestones stay above the execution matrix, with an optional wrapped overview. */
+.eis-milestones {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: var(--size-4-2);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+.eis-milestones-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+}
+.eis-milestones-header strong { margin-right: auto; }
+.eis-milestones-cards {
+  display: flex;
+  gap: var(--size-4-2);
+  overflow-x: auto;
+  padding-top: var(--size-4-2);
+}
+.eis-milestones-cards[hidden] { display: none; }
+.eis-milestones-cards > .eis-card { flex: 0 0 300px; max-width: 100%; }
+.eis-milestones-cards.is-expanded { flex-wrap: wrap; max-height: 30vh; overflow-y: auto; }

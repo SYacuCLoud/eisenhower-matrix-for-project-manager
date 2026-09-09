@@ -1,9 +1,9 @@
 # 기여하기
 
-버그 제보와 개선 제안을 환영합니다. 이 저장소는 아직 공개 Project Manager API가 아닌 일부 내부 뷰 구조에 의존하므로, 문제를 제보할 때 아래 정보를 함께 적어 주세요.
+버그 제보와 개선 제안을 환영합니다. 이 저장소는 아직 공개 dotpm(구 Project Manager) API가 아닌 일부 내부 뷰 구조에 의존하므로, 문제를 제보할 때 아래 정보를 함께 적어 주세요.
 
 - Obsidian 버전
-- Project Manager 버전
+- dotpm(Project Manager) 버전과 편집기 설정(모달/탭)
 - Eisenhower Matrix 버전
 - 재현 단계와 기대한 동작
 - 가능한 경우 개발자 콘솔의 오류 메시지

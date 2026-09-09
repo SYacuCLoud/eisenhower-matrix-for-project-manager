@@ -3,6 +3,16 @@ export const KO = {
   pluginName: 'Eisenhower Matrix for Project Manager',
   viewTitle: '아이젠하워 매트릭스',
 
+  milestones: {
+    title: '◆ 마일스톤',
+    collapse: '접기',
+    show: '표시',
+    expand: '전체 펼치기',
+    oneRow: '한 줄로 보기',
+    noDate: '목표일 미정',
+    noMove: '마일스톤은 사분면으로 이동할 수 없습니다.'
+  },
+
   quadrant: {
     do: { title: '긴급 · 중요', subtitle: '즉시 실행' },
     plan: { title: '중요', subtitle: '일정 계획' },
@@ -101,7 +111,7 @@ export const KO = {
 
   menu: {
     moveTo: '사분면 이동',
-    openProject: 'Project Manager 작업 편집기 열기',
+    openProject: 'dotpm 작업 편집기 열기',
     openNote: '실제 노트 열기',
     deleteTask: '작업 삭제',
     undo: '되돌리기',
@@ -116,7 +126,7 @@ export const KO = {
   },
 
   banner: {
-    pmMissing: 'Project Manager 플러그인을 찾을 수 없어 기본 상태/우선순위 설정을 사용합니다.',
+    pmMissing: 'dotpm(구 Project Manager) 플러그인을 찾을 수 없어 기본 상태/우선순위 설정을 사용합니다.',
     dismiss: '닫기'
   },
 
@@ -154,11 +164,11 @@ export const KO = {
     refreshed: '매트릭스를 새로 읽었습니다.',
     archivedNoDrag: '보관된 작업은 이동할 수 없습니다.',
     completedNotUrgent: '완료된 작업은 분면을 이동할 수 없습니다.',
-    pmTaskEditorFallback: 'Project Manager 작업 편집기를 열지 못했습니다.',
-    noProjects: '작업을 추가할 Project Manager 프로젝트가 없습니다.',
-    createTaskFallback: '기본값을 미리 채우지 못해 Project Manager의 일반 작업 추가 창을 열었습니다.',
+    pmTaskEditorFallback: 'dotpm 작업 편집기를 열지 못했습니다.',
+    noProjects: '작업을 추가할 dotpm 프로젝트가 없습니다.',
+    createTaskFallback: '기본값을 미리 채우지 못해 dotpm의 일반 작업 추가 창을 열었습니다.',
     taskDeleted: (taskTitle: string) => `“${taskTitle}” 작업을 삭제했습니다.`,
-    deleteTaskFailed: 'Project Manager에서 작업을 삭제하지 못했습니다.'
+    deleteTaskFailed: 'dotpm에서 작업을 삭제하지 못했습니다.'
   },
 
   quadrantAction: {
@@ -168,7 +178,7 @@ export const KO = {
 
   error: {
     missing: '작업 파일을 찾을 수 없습니다. 매트릭스를 새로고침합니다.',
-    notATask: 'Project Manager 작업 파일이 아닙니다.',
+    notATask: 'dotpm 작업 파일이 아닙니다.',
     stale: '파일이 다른 작업으로 교체되어 이동을 취소했습니다.',
     conflict: '다른 곳에서 이미 변경되어 이동을 취소했습니다.',
     write: '작업을 저장하지 못했습니다. 콘솔을 확인하세요.',
@@ -228,11 +238,17 @@ export const KO = {
     keepStartBeforeDueDesc: '새 마감일이 시작일보다 빠르면 시작일도 같이 당깁니다.',
 
     sectionIntegration: '연동 상태',
-    pmStatus: 'Project Manager 연동',
-    pmStatusOn: (s: number, p: number) => `사용 중 — 상태 ${s}개, 우선순위 ${p}개를 PM 설정에서 읽었습니다.`,
+    pmStatus: 'dotpm 연동',
+    pmStatusOn: (s: number, p: number, version: string) =>
+      `사용 중 — dotpm${version ? ` ${version}` : ''} 설정에서 상태 ${s}개, 우선순위 ${p}개를 읽었습니다.`,
+    pmEditorSurfaceName: 'dotpm 편집기 설정',
+    pmEditorSurface: (surface: 'modal' | 'tab') =>
+      surface === 'tab'
+        ? '편집기 표면: 탭 — 카드 클릭 시 dotpm 작업 편집기 탭으로 전환합니다.'
+        : '편집기 표면: 모달 — 카드 클릭 시 매트릭스 위에 편집 창을 띄웁니다.',
     pmStatusOff: '없음 — 기본값을 사용합니다.',
     safetyNote: '안전 규칙',
     safetyNoteDesc:
-      '분면 이동은 마감일·우선순위·시작일만 수정합니다. 새 작업은 Project Manager의 생성 창과 저장 경로를 사용합니다.'
+      '분면 이동은 마감일·우선순위·시작일만 수정합니다. 새 작업은 dotpm의 생성 창과 저장 경로를 사용합니다.'
   }
 } as const

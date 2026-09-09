@@ -193,3 +193,22 @@ describe('sortCards', () => {
     expect(sortCards(withUnknown, 'priority', cctx).map((t) => t.id).at(-1)).toBe('4')
   })
 })
+
+
+describe('milestones remain separate from execution tasks', () => {
+  it.each(['flat', 'hide', 'rollup'] as const)('keeps milestone children in %s mode', (mode) => {
+    const milestone = makeMatrixTask({ id: 'm', filePath: 'm.md', type: 'milestone' })
+    const task = makeMatrixTask({ id: 't', filePath: 't.md', parentId: 'm' })
+    const result = prepareTasksForSubtaskMode([milestone, task], mode, makeCtx())
+    expect(result.map((item) => item.id)).toEqual(['m', 't'])
+    expect(result[0].rolledUpSubtaskCount).toBeUndefined()
+  })
+  it('rolls subtasks into their task instead of its milestone', () => {
+    const milestone = makeMatrixTask({ id: 'm', filePath: 'm.md', type: 'milestone' })
+    const task = makeMatrixTask({ id: 't', filePath: 't.md', parentId: 'm' })
+    const subtask = makeMatrixTask({ id: 's', filePath: 's.md', parentId: 't', type: 'subtask' })
+    const result = prepareTasksForSubtaskMode([milestone, task, subtask], 'rollup', makeCtx())
+    expect(result.map((item) => item.id)).toEqual(['m', 't'])
+    expect(result[1].rolledUpSubtaskCount).toBe(1)
+  })
+})

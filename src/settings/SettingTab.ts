@@ -2,6 +2,8 @@ import { type App, PluginSettingTab, Setting } from 'obsidian'
 import { KO } from '../i18n/ko'
 import type { SortMode, SubtaskMode } from '../model/types'
 import { readPmPalettes } from '../pm/bridge'
+import { detectPmIntegration } from '../pm/taskEditorBridge'
+import { PM_PLUGIN_ID } from '../pm/pmTypes'
 import type EisenhowerPlugin from '../main'
 import type { NotUrgentStrategy, UrgentDueStrategy } from './types'
 
@@ -242,9 +244,16 @@ export class EisenSettingTab extends PluginSettingTab {
       .setName(KO.settings.pmStatus)
       .setDesc(
         palettes.source === 'pm'
-          ? KO.settings.pmStatusOn(palettes.statuses.length, palettes.priorities.length)
+          ? KO.settings.pmStatusOn(palettes.statuses.length, palettes.priorities.length, palettes.pluginVersion)
           : KO.settings.pmStatusOff
       )
+
+    if (palettes.available) {
+      const integration = detectPmIntegration(this.app.plugins?.getPlugin?.(PM_PLUGIN_ID))
+      new Setting(containerEl)
+        .setName(KO.settings.pmEditorSurfaceName)
+        .setDesc(KO.settings.pmEditorSurface(integration.editorSurface))
+    }
 
     new Setting(containerEl).setName(KO.settings.safetyNote).setDesc(KO.settings.safetyNoteDesc)
   }

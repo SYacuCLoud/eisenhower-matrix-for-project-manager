@@ -78,7 +78,10 @@ export function prepareTasksForSubtaskMode(
   mode: SubtaskMode,
   ctx?: ClassifyContext
 ): MatrixTask[] {
-  if (mode === 'hide') return tasks.filter((task) => !task.parentId)
+  if (mode === 'hide') {
+    const milestoneIds = new Set(tasks.filter((task) => task.type === 'milestone').map((task) => task.id))
+    return tasks.filter((task) => task.type === 'milestone' || !task.parentId || milestoneIds.has(task.parentId))
+  }
   if (mode !== 'rollup') return [...tasks]
 
   const byId = new Map<string, MatrixTask>()
@@ -89,7 +92,7 @@ export function prepareTasksForSubtaskMode(
   const groups = new Map<string, MatrixTask[]>()
   const rolledPaths = new Set<string>()
   for (const task of tasks) {
-    if (!task.parentId) continue
+    if (task.type === 'milestone' || !task.parentId) continue
     const root = findRollupRoot(task, byId)
     if (!root) continue
     rolledPaths.add(task.filePath)
@@ -137,7 +140,7 @@ function findRollupRoot(task: MatrixTask, byId: ReadonlyMap<string, MatrixTask>)
     if (seen.has(parentId)) return null
     seen.add(parentId)
     const parent = byId.get(parentId)
-    if (!parent) return root
+    if (!parent || parent.type === 'milestone') return root
     root = parent
     parentId = parent.parentId
   }

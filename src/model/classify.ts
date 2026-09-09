@@ -58,7 +58,7 @@ export function canMoveToQuadrant(
   target: QuadrantId,
   ctx: ClassifyContext
 ): boolean {
-  if (isTerminal(task.status, ctx.statuses)) return false
+  if (task.type === 'milestone' || isTerminal(task.status, ctx.statuses)) return false
   return true
 }
 

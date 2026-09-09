@@ -1,12 +1,13 @@
 {
   "name": "eisenhower-matrix-for-project-manager",
   "version": "1.8.0",
-  "description": "An Eisenhower Matrix add-on for the Obsidian Project Manager plugin",
+  "description": "An Eisenhower Matrix add-on for the Obsidian dotpm (formerly Project Manager) plugin",
   "author": "SYacuCLoud",
   "license": "MIT",
   "keywords": [
     "obsidian",
     "obsidian-plugin",
+    "dotpm",
     "eisenhower-matrix",
     "task-management"
   ],

@@ -20,6 +20,7 @@ import {
   ensureProjectViewTask,
   tryDeleteTask,
   tryOpenTaskEditorApi,
+  tryOpenTaskEditorInTab,
   tryOpenNewTaskModal,
   tryOpenTaskEditorFromProjectView
 } from '../pm/taskEditorBridge'
@@ -35,7 +36,9 @@ export const EISEN_MATRIX_VIEW_TYPE = 'eisenhower-matrix-for-project-manager'
 export class MatrixView extends ItemView {
   /** 늦게 도착한 비동기 갱신이 최신 렌더를 덮어쓰지 못하게 하는 가드. */
   private renderToken = 0
-  /** PM 공개 API가 없을 때 편집 모달을 여는 용도로만 재사용하는 단일 비활성 leaf. */
+  private milestonesCollapsed = false
+  private milestonesExpanded = false
+  /** dotpm 공개 API가 없고 편집기 설정이 모달일 때, 편집 모달을 여는 용도로만 재사용하는 단일 비활성 leaf. */
   private pmCompatibilityLeaf: WorkspaceLeaf | null = null
   private transitionNotice: HTMLElement | null = null
   private transitionNoticeKey = ''
@@ -155,7 +158,7 @@ export class MatrixView extends ItemView {
     }
 
     const all = prepareTasksForSubtaskMode(this.plugin.index.all(), settings.subtaskMode, ctx)
-    const visible = applyMatrixFilter(all, settings.filter, filterCtx)
+    const visible = applyMatrixFilter(all, settings.filter, { ...filterCtx, subtaskMode: 'flat' })
     const filterActive = !isDefaultFilter(settings.filter)
 
     if (all.length === 0) {
@@ -167,19 +170,21 @@ export class MatrixView extends ItemView {
       return
     }
 
+    const workAll = all.filter((task) => task.type !== 'milestone')
+    const workVisible = visible.filter((task) => task.type !== 'milestone')
     const availability = (task: MatrixTask) => taskAvailability(task, ctx)
     const unavailableAll = settings.separateUnavailableTasks
-      ? all.filter((task) => !availability(task).available)
+      ? workAll.filter((task) => !availability(task).available)
       : []
     const unavailableVisible = settings.separateUnavailableTasks
-      ? visible.filter((task) => !availability(task).available)
+      ? workVisible.filter((task) => !availability(task).available)
       : []
     const matrixAll = settings.separateUnavailableTasks
-      ? all.filter((task) => availability(task).available)
-      : all
+      ? workAll.filter((task) => availability(task).available)
+      : workAll
     const matrixVisible = settings.separateUnavailableTasks
-      ? visible.filter((task) => availability(task).available)
-      : visible
+      ? workVisible.filter((task) => availability(task).available)
+      : workVisible
 
     const attentionProps = (task: MatrixTask) => {
       const neglected = settings.detectNeglectedTasks
@@ -190,6 +195,44 @@ export class MatrixView extends ItemView {
         urgencyLevel: settings.showUrgencyLevels ? urgencyLevel(task, ctx) : ('none' as const),
         neglectedAgeDays: neglected.neglected ? neglected.ageDays : 0,
         neglectedMissingDue: neglected.neglected && neglected.missingDue
+      }
+    }
+
+    const visibleMilestones = sortCards(visible.filter((task) => task.type === 'milestone'), 'due', ctx)
+    if (visibleMilestones.length > 0) {
+      const section = root.createDiv({ cls: 'eis-milestones' })
+      const header = section.createDiv({ cls: 'eis-milestones-header' })
+      header.createEl('strong', { text: `${KO.milestones.title} · ${visibleMilestones.length}` })
+      const expand = header.createEl('button', { text: this.milestonesExpanded ? KO.milestones.oneRow : KO.milestones.expand })
+      expand.hidden = this.milestonesCollapsed
+      expand.setAttr('aria-pressed', String(this.milestonesExpanded))
+      const toggle = header.createEl('button', { text: this.milestonesCollapsed ? KO.milestones.show : KO.milestones.collapse })
+      toggle.setAttr('aria-expanded', String(!this.milestonesCollapsed))
+      const cards = section.createDiv({ cls: 'eis-milestones-cards' })
+      cards.hidden = this.milestonesCollapsed
+      if (this.milestonesExpanded) cards.addClass('is-expanded')
+      expand.addEventListener('click', () => {
+        this.milestonesExpanded = !this.milestonesExpanded
+        this.render()
+      })
+      toggle.addEventListener('click', () => {
+        this.milestonesCollapsed = !this.milestonesCollapsed
+        this.render()
+      })
+      for (const task of visibleMilestones) {
+        renderTaskCard(cards, {
+          task, today: ctx.today, priorities: palettes.priorities, statuses: palettes.statuses,
+          density: 'default', projectTitle: this.plugin.index.projectTitle(task.projectId),
+          parentTitle: '', currentQuadrant: null, availableMoveTargets: [],
+          unavailableReason: null, urgencyLevel: urgencyLevel(task, ctx),
+          neglectedAgeDays: 0, neglectedMissingDue: false,
+          canAdjustDue: !isTerminal(task.status, ctx.statuses),
+          onOpen: (item) => void this.openTaskEditorInProjectManager(item),
+          onOpenNote: (item) => void this.app.workspace.openLinkText(item.filePath, '', false),
+          onMove: () => {},
+          onAdjustDue: safeAsync(async (item, kind) => { await this.plugin.requestDueChange(item, kind) }),
+          onDelete: (item) => this.confirmDeleteTask(item)
+        })
       }
     }
 
@@ -276,6 +319,10 @@ export class MatrixView extends ItemView {
             new Notice(KO.error.missing)
             this.plugin.index.rebuild()
             this.render()
+            return
+          }
+          if (task.type === 'milestone') {
+            new Notice(KO.milestones.noMove)
             return
           }
           if (task.archived) {
@@ -426,14 +473,20 @@ export class MatrixView extends ItemView {
       if (!reveal) this.pmCompatibilityLeaf = leaf
       await leaf.setViewState({ type: viewType, state: { filePath: projectPath }, active: reveal })
     }
-    // Obsidian 1.7.2+는 비활성 탭을 DeferredView로 복원한다. 실제 PM ProjectView와
-    // 프로젝트 데이터가 준비된 뒤에만 DOM/호환 편집 경로를 사용할 수 있다.
+    // Obsidian 1.7.2+는 비활성 탭을 DeferredView로 복원한다. 실제 dotpm ProjectView와
+    // 프로젝트 데이터(2.x: loadScope, 1.8.x: loadProject)가 준비된 뒤에만 DOM/호환 편집 경로를 사용할 수 있다.
     if (!reveal && leaf.isDeferred) await leaf.loadIfDeferred()
     if (reveal) await this.app.workspace.revealLeaf(leaf)
     return leaf
   }
 
-  /** 공개 API → 현재 DOM → PM 1.8 TableView 편집 동작 순서로 시도한다. */
+  /**
+   * 편집기 열기 순서:
+   *  1. 공개 API(capability 계약이 있을 때만)
+   *  2. dotpm 2.x 탭 편집기 설정이면 dotpm과 같은 `router.openTask` 경로 — 새 탭으로 전환된다.
+   *  3. 모달 설정: 숨은 프로젝트 뷰의 현재 DOM 클릭 → 뷰 내부 호환 경로
+   *     (dotpm 2.x Board `openTask`, PM 1.8.x TableView Enter). 매트릭스 탭은 그대로 유지된다.
+   */
   private async openTaskEditorInProjectManager(task: MatrixTask): Promise<void> {
     const projectPath = this.plugin.index.projectFilePath(task.projectId)
     const pmPlugin = this.app.plugins?.getPlugin?.('project-manager')
@@ -452,7 +505,12 @@ export class MatrixView extends ItemView {
       return
     }
 
-    // PM 뷰는 편집기를 여는 호환 표면으로만 준비하고 활성 탭은 매트릭스에 둔다.
+    // dotpm 편집기 설정이 '탭'이면 사용자가 고른 표면을 따른다. 모달로 강제하지 않는다.
+    if (await tryOpenTaskEditorInTab(pmPlugin, task.filePath)) {
+      return
+    }
+
+    // dotpm 뷰는 편집기를 여는 호환 표면으로만 준비하고 활성 탭은 매트릭스에 둔다.
     const leaf = await this.openProjectLeaf(projectPath, false)
 
     // setViewState가 프로젝트 로드를 기다리지만, Obsidian/서드파티 leaf 복원기는
@@ -468,7 +526,7 @@ export class MatrixView extends ItemView {
       return
     }
 
-    // 새 작업 직후에는 백그라운드 PM 탭과 store 캐시가 이전 작업 트리를
+    // 새 작업 직후에는 백그라운드 dotpm 탭과 store 캐시가 이전 작업 트리를
     // 유지할 수 있다. 작업이 없을 때만 갱신한 뒤 동일한 안전 경로를 재시도한다.
     if (await ensureProjectViewTask(pmPlugin, leaf.view, projectPath, task.id)) {
       for (let attempt = 0; attempt < 4; attempt += 1) {

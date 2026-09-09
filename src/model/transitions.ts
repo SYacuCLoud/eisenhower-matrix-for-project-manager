@@ -68,7 +68,9 @@ export function scanTaskTransitions(
     const before = previous[task.filePath]
     if (!before) continue
 
-    const reasons = compareSnapshots(before, next)
+    const reasons = compareSnapshots(before, next).filter(
+      (reason) => task.type !== 'milestone' || reason.kind !== 'quadrant'
+    )
     if (reasons.length === 0) continue
     transitions.push({
       filePath: task.filePath,

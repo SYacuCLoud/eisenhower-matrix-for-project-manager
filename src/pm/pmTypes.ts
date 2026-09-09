@@ -1,7 +1,7 @@
 /**
- * Project Manager 의 팔레트 타입을 구조적으로 복사한 것.
- * PM 은 npm 패키지가 아니고 공개 API 도 없으므로 import 하지 않는다.
- * PM `src/types.ts` 와 형태가 일치해야 한다.
+ * dotpm(구 Project Manager) 의 팔레트 타입을 구조적으로 복사한 것.
+ * dotpm 은 npm 패키지가 아니고 공개 API 도 없으므로 import 하지 않는다.
+ * dotpm `src/types.ts` 와 형태가 일치해야 한다 (1.8.x, 2.3.1 동일 확인).
  */
 
 export interface StatusConfig {

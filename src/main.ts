@@ -189,6 +189,10 @@ export default class EisenhowerPlugin extends Plugin {
 
   /** 사분면 이동 요청 — 계획 → (확인) → 적용 → 되돌리기 안내. */
   async requestMove(task: MatrixTask, target: QuadrantId): Promise<void> {
+    if (task.type === 'milestone') {
+      new Notice(KO.milestones.noMove)
+      return
+    }
     const { ctx, opts, priorities } = this.buildContext()
     if (!canMoveToQuadrant(task, target, ctx)) {
       new Notice(KO.notice.completedNotUrgent)
@@ -317,6 +321,10 @@ export default class EisenhowerPlugin extends Plugin {
     }
 
     const { ctx } = this.buildContext()
+    if (resolved.type === 'milestone') {
+      new Notice(KO.milestones.noMove)
+      return
+    }
     const current = classify(resolved, ctx)
     const menu = new Menu()
     for (const q of QUADRANT_ORDER) {

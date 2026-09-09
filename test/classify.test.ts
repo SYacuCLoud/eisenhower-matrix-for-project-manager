@@ -200,3 +200,11 @@ describe('completed task classification', () => {
     )).toBe(true)
   })
 })
+
+
+it('milestones cannot move to any quadrant', () => {
+  const task = makeMatrixTask({ type: 'milestone' })
+  for (const target of ['do', 'plan', 'delegate', 'drop'] as const) {
+    expect(canMoveToQuadrant(task, target, makeCtx())).toBe(false)
+  }
+})

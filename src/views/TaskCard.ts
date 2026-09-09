@@ -19,13 +19,13 @@ export interface TaskCardProps {
   density: CardDensity
   projectTitle: string
   parentTitle: string
-  currentQuadrant: QuadrantId
+  currentQuadrant: QuadrantId | null
   availableMoveTargets: readonly QuadrantId[]
   unavailableReason: UnavailableReason | null
   urgencyLevel: UrgencyLevel
   neglectedAgeDays: number
   neglectedMissingDue: boolean
-  /** 카드 기본 동작: Project Manager 프로젝트 화면 열기(불가능하면 노트로 폴백). */
+  /** 카드 기본 동작: dotpm 작업 편집기 열기(불가능하면 노트로 폴백). */
   onOpen: (task: MatrixTask) => void
   /** 우클릭 메뉴에서 실제 Markdown 작업 노트를 연다. */
   onOpenNote: (task: MatrixTask) => void
@@ -51,7 +51,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   if (props.unavailableReason) card.addClass('eis-card--unavailable')
 
   // 보관된 작업을 옮기면 PM 의 아카이브 의미와 싸우게 된다.
-  const draggable = !task.archived && !props.unavailableReason && !Platform.isMobile
+  const draggable = task.type !== 'milestone' && !task.archived && !props.unavailableReason && !Platform.isMobile
   card.draggable = draggable
 
   const color = priorityColor(task.priority, props.priorities)
@@ -59,6 +59,18 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   if (color) bar.style.backgroundColor = color
 
   const body = card.createDiv({ cls: 'eis-card-body' })
+
+  // 정보 위계: 상단(프로젝트·상태 배지) → 가운데(제목) → 하단(날짜·우선순위·태그).
+  // 기본·상세 카드는 배지 유무와 관계없이 상단 행을 확보해 제목 위치를 고정한다.
+  const header = compact ? null : body.createDiv({ cls: 'eis-card-header' })
+  if (header) {
+    header.createSpan({
+      cls: 'eis-card-project',
+      text: props.projectTitle || KO.card.noProject,
+      attr: { title: props.projectTitle || KO.card.noProject }
+    })
+  }
+  const attention = header ? header.createDiv({ cls: 'eis-card-attention' }) : null
 
   if (!compact && props.parentTitle) {
     body.createDiv({ cls: 'eis-card-parent', text: `↳ ${props.parentTitle}` })
@@ -93,9 +105,6 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
       text: KO.card.rollupCompleted(task.rolledUpCompletedCount)
     })
   }
-  // 기본·상세 카드는 배지 유무와 관계없이 두 번째 행을 확보해 높이와 위치를 고정한다.
-  const attention = compact ? null : body.createDiv({ cls: 'eis-card-attention' })
-
   if (attention && task.type === 'milestone') {
     attention.createSpan({ cls: 'eis-badge eis-badge--milestone', text: 'M' })
   }
@@ -141,14 +150,14 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
     chip.addClass(`eis-chip--${rel.tone}`)
   }
 
+  if (meta && task.type === 'milestone' && !task.due) {
+    meta.createSpan({ cls: 'eis-chip', text: KO.milestones.noDate })
+  }
+
   const pLabel = priorityLabel(task.priority, props.priorities)
   if (meta && pLabel) {
     const chip = meta.createSpan({ cls: 'eis-chip eis-chip--priority', text: pLabel })
     if (color) chip.style.borderColor = color
-  }
-
-  if (meta && detailed && props.projectTitle) {
-    meta.createSpan({ cls: 'eis-chip eis-chip--project', text: props.projectTitle })
   }
 
   if (meta) {
@@ -189,7 +198,7 @@ export function renderTaskCard(parent: HTMLElement, props: TaskCardProps): HTMLE
   const buildMenu = (): Menu => {
     const menu = new Menu()
     let hasMoveItem = false
-    if (!task.archived) {
+    if (!task.archived && task.type !== 'milestone') {
       for (const q of QUADRANT_ORDER) {
         if (q === props.currentQuadrant) continue
         if (!props.availableMoveTargets.includes(q)) continue
