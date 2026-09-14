@@ -17,6 +17,9 @@ export interface NewTaskDefaults {
  */
 export type PmEditorSurface = 'modal' | 'tab'
 
+/** dotpm 2.x `editorSaveModifier`. 저장 단축키는 `[수정키]+Enter`. 설정이 없으면 Shift. */
+export type PmSaveModifier = 'Shift' | 'Mod'
+
 /**
  * 지원 세대 판정. 버전 문자열이 아니라 실제로 존재하는 내부 기능으로 나눈다.
  *  - `dotpm-2`: store.reloadProject / router.openTask / ProjectView.loadScope 계열 (2.3.x 확인)
@@ -34,7 +37,7 @@ export interface PmIntegrationInfo {
 
 interface PmPluginShape {
   manifest?: { version?: unknown; name?: unknown }
-  settings?: { taskEditorSurface?: unknown }
+  settings?: { taskEditorSurface?: unknown; editorSaveModifier?: unknown }
   store?: PmStoreShape
   router?: PmRouterShape
   openTaskModalForProject?: (project: unknown, parentId: string | null, defaults?: NewTaskDefaults) => void
@@ -62,6 +65,11 @@ function asPlugin(plugin: unknown): PmPluginShape | null {
 export function pmEditorSurface(plugin: unknown): PmEditorSurface {
   const surface = asPlugin(plugin)?.settings?.taskEditorSurface
   return surface === 'tab' ? 'tab' : 'modal'
+}
+
+export function pmSaveModifier(plugin: unknown): PmSaveModifier {
+  const modifier = asPlugin(plugin)?.settings?.editorSaveModifier
+  return modifier === 'Mod' ? 'Mod' : 'Shift'
 }
 
 export function detectPmIntegration(plugin: unknown): PmIntegrationInfo {

@@ -31,6 +31,8 @@ export interface EisenSettings {
 
   // 기타
   pmBannerDismissed: boolean
+  /** dotpm 편집기에서 Enter=저장, 저장 단축키(Shift+Enter)=줄바꿈으로 바꾼다. */
+  swapPmEditorEnterKeys: boolean
   showTransitionBriefing: boolean
   transitionSnapshot: Record<string, TaskStateSnapshot>
   pendingTransitions: TaskTransition[]
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS: EisenSettings = {
   keepStartBeforeDue: true,
 
   pmBannerDismissed: false,
+  swapPmEditorEnterKeys: false,
   showTransitionBriefing: true,
   transitionSnapshot: {},
   pendingTransitions: []
@@ -96,6 +99,7 @@ export function hydrateSettings(saved: unknown): EisenSettings {
   if (!['push', 'clear'].includes(out.notUrgentStrategy)) {
     out.notUrgentStrategy = DEFAULT_SETTINGS.notUrgentStrategy
   }
+  out.swapPmEditorEnterKeys = out.swapPmEditorEnterKeys === true
 
   return out
 }

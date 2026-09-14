@@ -9,6 +9,19 @@ export class Notice {
 
 export function setIcon(): void {}
 
+export class Scope {
+  keys: unknown[] = []
+  constructor(public parent?: Scope) {}
+  register(modifiers: unknown, key: unknown, func: unknown): unknown {
+    const handler = { modifiers, key, func }
+    this.keys.push(handler)
+    return handler
+  }
+  unregister(handler: unknown): void {
+    this.keys = this.keys.filter((k) => k !== handler)
+  }
+}
+
 export function normalizePath(p: string): string {
   return p.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/+/, '').replace(/\/+$/, '')
 }

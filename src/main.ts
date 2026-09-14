@@ -11,6 +11,7 @@ import { mergePendingTransitions, scanTaskTransitions } from './model/transition
 import { QUADRANT_ORDER, type ClassifyContext, type MatrixTask, type QuadrantId, type QuadrantWritePlan } from './model/types'
 import { MoveConfirmModal } from './modals/MoveConfirmModal'
 import { readPmPalettes } from './pm/bridge'
+import { registerEditorKeySwap } from './pm/editorKeySwap'
 import { PM_TASK_KEY } from './pm/pmTypes'
 import { EisenSettingTab } from './settings/SettingTab'
 import { DEFAULT_SETTINGS, hydrateSettings, type EisenSettings } from './settings/types'
@@ -34,6 +35,7 @@ export default class EisenhowerPlugin extends Plugin {
     registerIndexSync(this, this.index, () => void this.handleIndexChanged())
 
     this.registerView(EISEN_MATRIX_VIEW_TYPE, (leaf: WorkspaceLeaf) => new MatrixView(leaf, this))
+    registerEditorKeySwap(this, () => this.settings.swapPmEditorEnterKeys)
 
     this.app.workspace.onLayoutReady(() => {
       this.index.rebuild()

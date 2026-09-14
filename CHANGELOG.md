@@ -7,6 +7,7 @@
 - dotpm 2.3.x(구 Project Manager) 호환: 작업 편집기 열기를 dotpm 2.x의 Board `openTask` 경로로, 프로젝트 뷰 갱신을 `loadScope`로, 캐시 갱신을 `store.reloadProject`로 대응. 1.8.x 경로는 기능 존재 여부로 분기해 유지
 - dotpm 편집기 설정(`taskEditorSurface`)을 따름: 모달이면 매트릭스 위에 편집 창, 탭이면 dotpm과 같은 `router.openTask` 경로로 편집기 탭 열기. 탭 설정에서는 생성 저장 후 화면 이동 방지 가드를 두지 않음
 - 플러그인 설정 연동 상태에 감지된 dotpm 버전과 편집기 설정 표시
+- 설정 `dotpm 편집기 Enter로 저장`(기본 꺼짐): dotpm 편집기 안에서만 Enter를 저장으로, dotpm 저장 단축키(Shift+Enter 또는 Ctrl+Enter)를 설명 줄바꿈으로 바꿈. dotpm 설정·코드는 건드리지 않고, 제목·설명칸에 포커스가 있는 동안만 Obsidian 키맵 스택에 우리 Scope 를 올려 처리(Obsidian 키맵이 window 캡처 단계에 먼저 붙어 DOM 리스너로는 dotpm 저장을 앞설 수 없음)
 - dotpm 2.x가 작업 저장 시 `projectId`·`parentId`를 `[[경로|제목]]` 위키링크로 쓰는 경우를 대상 노트의 `id`로 풀어 인덱싱. 편집기에서 저장한 카드가 `(프로젝트 없음)`으로 바뀌고 다시 열리지 않던 문제 수정
 - 메뉴·알림·설정 문구와 README의 제품명을 dotpm으로 갱신. 내부 플러그인 ID(`project-manager`), 프론트매터 키(`pm-task`, `pm-project`), 이 플러그인의 ID와 설치 폴더는 유지
 

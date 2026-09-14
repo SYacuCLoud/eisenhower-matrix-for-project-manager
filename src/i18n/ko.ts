@@ -247,6 +247,11 @@ export const KO = {
         ? '편집기 표면: 탭 — 카드 클릭 시 dotpm 작업 편집기 탭으로 전환합니다.'
         : '편집기 표면: 모달 — 카드 클릭 시 매트릭스 위에 편집 창을 띄웁니다.',
     pmStatusOff: '없음 — 기본값을 사용합니다.',
+    swapPmEditorEnterKeys: 'dotpm 편집기 Enter로 저장',
+    swapPmEditorEnterKeysDesc: (modifier: 'Shift' | 'Mod') => {
+      const combo = modifier === 'Mod' ? 'Ctrl+Enter' : 'Shift+Enter'
+      return `dotpm 편집기에서 Enter는 저장, ${combo}는 설명 줄바꿈이 됩니다 (dotpm 기본은 반대). dotpm 설정은 바꾸지 않습니다.`
+    },
     safetyNote: '안전 규칙',
     safetyNoteDesc:
       '분면 이동은 마감일·우선순위·시작일만 수정합니다. 새 작업은 dotpm의 생성 창과 저장 경로를 사용합니다.'
