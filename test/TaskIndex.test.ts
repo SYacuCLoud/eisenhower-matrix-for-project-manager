@@ -37,6 +37,54 @@ describe('MatrixIndex', () => {
     expect(index.allProjects()).toHaveLength(1)
   })
 
+  it('dotpm 2.x 위키링크 projectId 를 프로젝트 id 로 푼다', () => {
+    app.addFile('Projects/_DX/_DX.md', makeProjectFm({ id: '8bxhy66n', title: '_DX' }))
+    app.addFile(
+      'Projects/_DX/_tasks/a.md',
+      makeTaskFm({ id: 'a', projectId: '[[Projects/_DX/_DX|_DX]]' })
+    )
+    app.addFile('Projects/_DX/_tasks/b.md', makeTaskFm({ id: 'b', projectId: '8bxhy66n' }))
+    app.addFile('Projects/_DX/_tasks/c.md', makeTaskFm({ id: 'c', projectId: '[[_DX]]' }))
+
+    index.rebuild()
+
+    const byId = new Map(index.all().map((t) => [t.id, t]))
+    expect(byId.get('a')!.projectId).toBe('8bxhy66n')
+    expect(byId.get('b')!.projectId).toBe('8bxhy66n')
+    expect(byId.get('c')!.projectId).toBe('8bxhy66n')
+    expect(index.projectTitle(byId.get('a')!.projectId)).toBe('_DX')
+    expect(index.projectFilePath(byId.get('a')!.projectId)).toBe('Projects/_DX/_DX.md')
+  })
+
+  it('dotpm 2.x 위키링크 parentId 를 부모 작업 id 로 푼다', () => {
+    app.addFile('Projects/_DX/_tasks/parent.md', makeTaskFm({ id: 'p1', title: '부모' }))
+    app.addFile(
+      'Projects/_DX/_tasks/child.md',
+      makeTaskFm({ id: 'c1', type: 'subtask', parentId: '[[Projects/_DX/_tasks/parent|부모]]' })
+    )
+    index.rebuild()
+    expect(index.get('Projects/_DX/_tasks/child.md')!.parentId).toBe('p1')
+  })
+
+  it('대상을 찾지 못한 링크는 원문을 유지한다', () => {
+    app.addFile('a.md', makeTaskFm({ id: 'a', projectId: '[[없는/프로젝트|X]]', parentId: '[[없는 부모]]' }))
+    index.rebuild()
+    const t = index.all()[0]!
+    expect(t.projectId).toBe('[[없는/프로젝트|X]]')
+    expect(t.parentId).toBe('[[없는 부모]]')
+    expect(index.projectTitle(t.projectId)).toBe('')
+  })
+
+  it('id 표기가 위키링크로 바뀌어도 syncFile 은 변경으로 보지 않는다', () => {
+    app.addFile('Projects/demo.md', makeProjectFm())
+    app.addFile('a.md', makeTaskFm({ id: 'a', projectId: 'proj-1' }))
+    index.rebuild()
+
+    app.addFile('a.md', makeTaskFm({ id: 'a', projectId: '[[Projects/demo|데모 프로젝트]]' }))
+    expect(index.syncFile('a.md')).toBe(false)
+    expect(index.get('a.md')!.projectId).toBe('proj-1')
+  })
+
   it('Archive 경로의 작업에 archived 를 세운다', () => {
     app.addFile('Projects/demo_tasks/Archive/old.md', makeTaskFm({ id: 'old' }))
     index.rebuild()

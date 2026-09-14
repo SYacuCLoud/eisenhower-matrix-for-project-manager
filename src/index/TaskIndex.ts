@@ -5,6 +5,9 @@ import { PM_PROJECT_KEY, PM_TASK_KEY } from '../pm/pmTypes'
 
 const TASK_TYPES: readonly TaskType[] = ['task', 'milestone', 'subtask']
 
+/** `[[경로]]`, `[[경로|별칭]]`, `[[경로#헤딩|별칭]]` — 프론트매터 값 전체가 링크 하나일 때만. */
+const WIKILINK_RE = /^\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]$/
+
 /**
  * pm-task 노트의 인메모리 인덱스.
  *
@@ -141,7 +144,7 @@ export class MatrixIndex {
 
     const rawType = str(fm['type'])
     const type = (TASK_TYPES as readonly string[]).includes(rawType) ? (rawType as TaskType) : 'task'
-    const parentId = str(fm['parentId'])
+    const parentId = this.resolveIdRef(str(fm['parentId']), file.path)
 
     return {
       id: str(fm['id']),
@@ -158,11 +161,28 @@ export class MatrixIndex {
       // 객체라, 같은 배열을 들고 있다가 변형하면 캐시가 오염된다.
       tags: strArray(fm['tags']),
       assignees: strArray(fm['assignees']),
-      projectId: str(fm['projectId']),
+      projectId: this.resolveIdRef(str(fm['projectId']), file.path),
       parentId: parentId || null,
       archived: isArchivedPath(file.path),
       mtime: file.stat?.mtime ?? 0
     }
+  }
+
+  /**
+   * dotpm 2.x는 작업을 저장할 때 `projectId`/`parentId`를 id 대신 `[[경로|제목]]`
+   * 위키링크로 쓴다(1.8.x와 2.x가 만든 파일이 한 볼트에 섞여 있다). 링크면 대상
+   * 노트를 찾아 그 프론트매터 `id`로 바꿔 두 표기를 같은 값으로 다룬다. 대상을
+   * 찾지 못하면 원문을 그대로 둔다 (dotpm 의 역참조 규칙과 같다).
+   */
+  private resolveIdRef(raw: string, sourcePath: string): string {
+    const match = WIKILINK_RE.exec(raw.trim())
+    if (!match) return raw
+    const linkpath = match[1]!.trim()
+    if (!linkpath) return raw
+    const dest = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath)
+    if (!dest) return raw
+    const id = str(this.app.metadataCache.getFileCache(dest)?.frontmatter?.['id'])
+    return id || raw
   }
 
   private warnOnce(path: string, field: string): void {

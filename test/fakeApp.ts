@@ -65,6 +65,13 @@ export class FakeApp {
       const fm = this.frontmatter.get(f.path)
       return fm ? { frontmatter: fm } : {}
     },
+    /** 경로(확장자 유무) 일치 → basename 일치 순. Obsidian 의 링크 해석을 단순화한 것. */
+    getFirstLinkpathDest: (linkpath: string, _sourcePath: string): TFile | null => {
+      const exact = this.files.get(linkpath) ?? this.files.get(`${linkpath}.md`)
+      if (exact) return exact
+      const base = linkpath.split('/').pop() ?? linkpath
+      return [...this.files.values()].find((f) => f.basename === base) ?? null
+    },
     on: () => ({})
   }
 

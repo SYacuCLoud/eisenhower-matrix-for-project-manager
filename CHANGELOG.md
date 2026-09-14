@@ -7,6 +7,7 @@
 - dotpm 2.3.x(구 Project Manager) 호환: 작업 편집기 열기를 dotpm 2.x의 Board `openTask` 경로로, 프로젝트 뷰 갱신을 `loadScope`로, 캐시 갱신을 `store.reloadProject`로 대응. 1.8.x 경로는 기능 존재 여부로 분기해 유지
 - dotpm 편집기 설정(`taskEditorSurface`)을 따름: 모달이면 매트릭스 위에 편집 창, 탭이면 dotpm과 같은 `router.openTask` 경로로 편집기 탭 열기. 탭 설정에서는 생성 저장 후 화면 이동 방지 가드를 두지 않음
 - 플러그인 설정 연동 상태에 감지된 dotpm 버전과 편집기 설정 표시
+- dotpm 2.x가 작업 저장 시 `projectId`·`parentId`를 `[[경로|제목]]` 위키링크로 쓰는 경우를 대상 노트의 `id`로 풀어 인덱싱. 편집기에서 저장한 카드가 `(프로젝트 없음)`으로 바뀌고 다시 열리지 않던 문제 수정
 - 메뉴·알림·설정 문구와 README의 제품명을 dotpm으로 갱신. 내부 플러그인 ID(`project-manager`), 프론트매터 키(`pm-task`, `pm-project`), 이 플러그인의 ID와 설치 폴더는 유지
 
 ## 1.8.0
